@@ -1,18 +1,18 @@
 #!/opt/bin/perl -w
 
+use Data::Dumper;
+
+
+
 use strict;
 use warnings;
 
 use Getopt::Long qw( :config no_auto_abbrev bundling );
 use Pod::Usage;
 
-use Solaris::DeviceTree;
-use Solaris::DeviceTree::OBP qw( :DEFAULT );
+use Solaris::DeviceTree::Overlay;
 
-use Data::Dumper;
-
-use vars qw( $VERSION );
-$VERSION = "0.01";
+our $VERSION = do { my @r = (q$Revision: 1.12 $ =~ /\d+/g); sprintf "%d."."%02d" x $#r, @r }; # must be all one line, for MakeMaker
 
 my $man = 0;
 my $help = 0;
@@ -26,7 +26,7 @@ my $network;
 my $businfo;
 my $slots;
 
-my %devtreeOptions = (
+my %devtree_options = (
   attr		=> undef,
   prop		=> undef,
   promprop	=> undef,
@@ -38,11 +38,11 @@ my %dpOptions = (
 
 GetOptions( 'help|?' => \$help, man => \$man,
   'p|print'	=> \$devtree,
-  'w|attr:s'	=> \$devtreeOptions{attr},
-  'o|prop:s'	=> \$devtreeOptions{prop},
-  'r|promprop:s' => \$devtreeOptions{promprop},
-  'm|minor'	=> \$devtreeOptions{minor},
-  'v|all'	=> sub { @devtreeOptions{ qw(attr prop promprop minor) } = ('', '', '', '') },
+  'w|attr:s'	=> \$devtree_options{attr},
+  'o|prop:s'	=> \$devtree_options{prop},
+  'r|promprop:s' => \$devtree_options{promprop},
+  'm|minor'	=> \$devtree_options{minor},
+  'v|all'	=> sub { @devtree_options{ qw(attr prop promprop minor) } = ('', '', '', '') },
 
   'a|aliases:s'	=> \$aliases,
   'd|disks'	=> \$disk,
@@ -56,7 +56,7 @@ pod2usage( 1 ) if( $help );
 pod2usage( -exitstatus => 0, -verbose => 2 ) if( $man );
 
 if( $devtree ) {
-  print_tree( %devtreeOptions );
+  print_tree( %devtree_options );
 } elsif( defined $aliases ) {
   my %options;
   $options{aliases} = $aliases if( $aliases ne '' );
@@ -70,13 +70,36 @@ if( $devtree ) {
 } elsif( defined $bootinfo ) {
   print_bootinfo();
 } elsif( defined $businfo ) {
-  print_businfo(
-    indent => 1,
-    node => new Solaris::DeviceTree( use => [ qw( libdevinfo filesystem path_to_inst ) ], ),
-  );
+  require Solaris::DeviceTree::Libdevinfo;
+  my $libdevinfo_tree = Solaris::DeviceTree::Libdevinfo->new;
+  require Solaris::DeviceTree::Filesystem;
+  my $filesystem_tree = Solaris::DeviceTree::Filesystem->new;
+  require Solaris::DeviceTree::PathToInst;
+  my $path_to_inst_tree = Solaris::DeviceTree::PathToInst->new;
+  print_businfo( indent => 1, node => make_overlay_tree() );
 } else {
   pod2usage( 1 );
 }
+
+sub make_overlay_tree {
+  require Solaris::DeviceTree::Libdevinfo;
+  my $libdevinfo_tree = Solaris::DeviceTree::Libdevinfo->new;
+  require Solaris::DeviceTree::Filesystem;
+  my $filesystem_tree = Solaris::DeviceTree::Filesystem->new;
+  require Solaris::DeviceTree::PathToInst;
+  my $path_to_inst_tree = Solaris::DeviceTree::PathToInst->new;
+
+  my $overlay_tree = Solaris::DeviceTree::Overlay->new(
+    sources => {
+      libdevinfo => $libdevinfo_tree,
+      filesystem => $filesystem_tree,
+      path_to_inst => $path_to_inst_tree,
+    },
+  );
+
+  return $overlay_tree;
+}
+
 
 # -- Utility functions --
 
@@ -95,7 +118,7 @@ sub maxlen {
 # Print the line $line with current width and prepend the first line
 # with $prefix1 and all following lines with $prefix2.
 # $line must not contain any newlines.
-sub printPrefix1 {
+sub print_tree_prefix1 {
   my ($prefix1, $prefix2, $line) = @_;
   my $width = $ENV{COLUMNS} || 80;
   my $maxlen = $width - length( $prefix1 ) - 1;
@@ -104,7 +127,6 @@ sub printPrefix1 {
     print $prefix1, "\n";
     return;
   }
-#my $oldline = $line;
   my $first;
   my $line2;
   ($first, $line2) = ($line =~ /^(.{0,${maxlen}})(?:\s+(.*))?$/);
@@ -113,7 +135,6 @@ sub printPrefix1 {
   } else {
     $line = $line2;
   }
-#print "Line: <$oldline>\n" if( !defined $first );
   print $prefix1, $first, "\n";
 
 
@@ -130,87 +151,99 @@ sub printPrefix1 {
 
 # Print the line $line with current width and prepend the first line
 # with $prefix1 and all following lines with $prefix2.
-sub printPrefix {
+sub print_tree_prefix {
   my ($prefix1, $prefix2, $line) = @_;
   my @lines = split( /\n/, $line );
-  printPrefix1( $prefix1, $prefix2, shift @lines );
+  print_tree_prefix1( $prefix1, $prefix2, shift @lines );
   foreach my $line (@lines) {
-    printPrefix1( $prefix2, $prefix2, $line );
+    print_tree_prefix1( $prefix2, $prefix2, $line );
   }
 }
 
 # Print the specified node and recurse further into the tree.
-sub printRecursive {
+sub print_tree_recursive {
   my ($node, %options) = @_;
   print $node->devfs_path;
   if( $node->can( "sources" ) ) {
     print " (", join( ",", $node->sources ), ")";
   }
 
-  my $ctds = '';
-  {
-    my $ctrl_node = $node;
-    while( defined $ctrl_node && !defined $node->controller ) {
-      $ctrl_node = $ctrl_node->parent_node;
-    }
-    $ctds .= 'c' . $node->controller if( defined $ctrl_node && defined $ctrl_node->controller );
-  }
-  $ctds .= 't' . $node->target if( defined $node->target );
-  $ctds .= 'd' . $node->lun if( defined $node->lun );
-  print " [$ctds]" if( $ctds ne '' );
+  my $solaris_device = $node->solaris_device || '';
+  print " [$solaris_device]" if( $solaris_device ne '' );
   print "\n";
 
   if( defined $options{attr} ) {
-    print "  Node Name:       ", $node->node_name || '', "\n";
-    print "  Binding Name:    ", $node->binding_name || '', "\n";
-    print "  Bus Address:     ", (defined $node->bus_addr ? $node->bus_addr : "<unassigned>"), "\n";
+    my @attr = qw( nodename bindingname busaddr compatible drivername driverops instance nodeid state );
+    my @list_attr = (ref $options{attr} ? @{$options{attr}} : @attr);
+    my %print_attr;
+    @print_attr{@list_attr} = 1 .. @list_attr;
 
-    my @cnames = $node->compatible_names;
-    if( @cnames && scalar @cnames > 0 ) {
-      foreach my $n (@cnames) {
-        print "  Compatible Name: $n\n";
+    print "  Node Name:       ", $node->node_name || '', "\n"
+      if( exists $print_attr{nodename} );
+    print "  Binding Name:    ", $node->binding_name || '', "\n"
+      if( exists $print_attr{bindingname} );
+    print "  Bus Address:     ", (defined $node->bus_addr ? $node->bus_addr : "<unassigned>"), "\n"
+      if( exists $print_attr{busaddr} );
+
+    if( exists $print_attr{compatible} ) {
+      my @cnames = $node->compatible_names;
+      if( @cnames && scalar @cnames > 0 ) {
+        foreach my $n (@cnames) {
+          print "  Compatible Name: $n\n";
+        }
       }
     }
-    print "  Device ID:       ", $node->devid || '', "\n";
-    print "  Driver Name:     ", (defined $node->driver_name ? $node->driver_name : "<unbound>"), "\n";
+    print "  Driver Name:     ", (defined $node->driver_name ? $node->driver_name : "<unbound>"), "\n"
+      if( exists $print_attr{drivername} );
     my %ops = $node->driver_ops;
-    print "  Driver Ops:      ", %ops ? join( " ", keys %ops ) : "<undefined>", "\n";
-    print "  Instance:        ", (defined $node->instance ? $node->instance : "<unassigned>"), "\n";
-    print "  Node ID:         ", $node->nodeid || '', "\n";
+    print "  Driver Ops:      ", %ops ? join( " ", keys %ops ) : "<undefined>", "\n"
+      if( exists $print_attr{driverops} );
+    print "  Instance:        ", (defined $node->instance ? $node->instance : "<unassigned>"), "\n"
+      if( exists $print_attr{instance} );
+    print "  Node ID:         ", $node->nodeid || '', "\n"
+      if( exists $print_attr{nodeid} );
+    my %state = $node->state;
+    print "  State:           ", join( " ", keys %state ), "\n"
+      if( exists $print_attr{state} );
   }
 
   if( defined $options{prop} ) {
     my $props = $node->props;
-    my @listProps = (ref $options{prop} ? @{$options{prop}} : keys %$props);
-    # Print only if the node has properties at all *and* some of them should be printed
-    print "  Properties:\n" if( keys %$props > 0 && @listProps > 0 );
-    my $maxlen = maxlen( @listProps );
-    foreach my $propName (sort @listProps) {
-      next if( !exists $props->{$propName} );
-      my $p = $props->{$propName};
+    my @list_props = (ref $options{prop} ? @{$options{prop}} : keys %$props);
+    my $headline_printed = 0;
+    my $maxlen = maxlen( @list_props );
+    foreach my $prop_name (sort @list_props) {
+      next if( !exists $props->{$prop_name} );
+      my $p = $props->{$prop_name};
       my ($major, $minor) = $p->devt;
       my $majMinString = (defined $major ? "($major,$minor) " : "" );
-      printPrefix( sprintf( "    %-${maxlen}s -> ", $p->name ), " " x ($maxlen + 8),
+      if( !$headline_printed ) {
+        print "  Properties:\n" if( keys %$props > 0 && @list_props > 0 );
+        $headline_printed = 1;
+      }
+      print_tree_prefix( sprintf( "    %-${maxlen}s -> ", $p->name ), " " x ($maxlen + 8),
         $majMinString . join( " ", map { "'" . $_ . "'" } $p->data ) );
     }
   }
 
   if( defined $options{promprop} ) {
     my $pprops = $node->prom_props;
-    my @listProps = (ref $options{promprop} ? @{$options{promprop}} : keys %$pprops);
-    my $maxlen = maxlen( @listProps );
-    # Print only if the node has properties at all *and* some of them should be printed
-    print "  PROM-Properties:\n" if( keys %$pprops > 0 && @listProps > 0 );
-    foreach my $ppropname (sort @listProps) {
+    my @list_props = (ref $options{promprop} ? @{$options{promprop}} : keys %$pprops);
+    my $headline_printed = 0;
+    my $maxlen = maxlen( @list_props );
+    foreach my $ppropname (sort @list_props) {
       next if( !exists $pprops->{$ppropname} );
       my $string = $pprops->{$ppropname}->string;
-      printPrefix( sprintf( "    %-${maxlen}s -> ", $ppropname ), " " x ($maxlen + 8), $string );
+      if( !$headline_printed ) {
+        print "  PROM-Properties:\n" if( keys %$pprops > 0 && @list_props > 0 );
+        $headline_printed = 1;
+      }
+      print_tree_prefix( sprintf( "    %-${maxlen}s -> ", $ppropname ), " " x ($maxlen + 8), $string );
     }
   }
 
   if( defined $options{minor} ) {
     my $mn = $node->minor_nodes;
-#print Dumper( $mn );
     print "  Minor-Nodes:\n" if( $mn && @$mn > 0 );
     foreach my $m (sort { $a->name cmp $b->name } @$mn) {
       print "  * Name:          ", $m->name || "<undefined>", "\n";
@@ -222,7 +255,7 @@ sub printRecursive {
   }
 
   foreach my $child (sort { $a->devfs_path cmp $b->devfs_path } $node->child_nodes) {
-    printRecursive( $child, %options );
+    print_tree_recursive( $child, %options );
   }
 }
 
@@ -235,21 +268,35 @@ sub print_tree {
 #  my $tree = new Solaris::DeviceTree::Libdevinfo;
 #  my $tree = new Solaris::DeviceTree::PathToInst;
 #  my $tree = new Solaris::DeviceTree::Filesystem;
-  my $tree = new Solaris::DeviceTree( use => [ qw( path_to_inst libdevinfo filesystem ) ] );
+  # TODO: -> Implement has_data_source
+  my $tree = make_overlay_tree;
 
   if( defined $options{attr} && $options{attr} ne '' ) {
-    $options{prop} = [ split( /,/, $options{attr} ) ];
+    $options{attr} = [ split( /,/, $options{attr} ) ];
   }
 
   if( defined $options{prop} && $options{prop} ne '' ) {
     $options{prop} = [ split( /,/, $options{prop} ) ];
   }
 
-  if( defined $options{promprop} && $options{promprop} ne '' ) {
-    $options{promprop} = [ split( /,/, $options{promprop} ) ];
+#print Dumper( %options );
+
+  if( defined $options{promprop} ) {
+    # Check if we can expect a result
+    my $prom_props = $tree->prom_props;
+    if( !defined $prom_props ) {
+      print STDERR "We failed to access the PROM properties. Please note that therefore\n";
+      print STDERR "no PROM properties can be displayed. For proper display read access to\n";
+      print STDERR "/dev/openprom is needed.\n\n";
+
+      delete $options{promprop};
+    } elsif( $options{promprop} ne '' ) {
+      $options{promprop} = [ split( /,/, $options{promprop} ) ];
+    }
   }
 
-  printRecursive( $tree, %options );
+
+  print_tree_recursive( $tree, %options );
 
 }
 
@@ -259,8 +306,19 @@ sub print_aliases {
   my %options = @_;
 
   require Solaris::DeviceTree::Libdevinfo;
+  require Solaris::DeviceTree::OBP;
+  import Solaris::DeviceTree::OBP qw( :aliases );
   my $tree = new Solaris::DeviceTree::Libdevinfo;
-  my %aliases = %{$tree->aliases};
+
+  # Check if we have the permissions to continue
+  {
+    my $prom_props = $tree->prom_props;
+    if( !defined $prom_props ) {
+      die "Cannot access PROM properties. Check the read permissions on /dev/openprom.\n";
+    }
+  }
+
+  my %aliases = %{obp_aliases($tree)};
 
   if( exists $options{aliases} ) {
     my $name = $options{aliases};
@@ -268,7 +326,6 @@ sub print_aliases {
       print $aliases{$name}, "\n";
     } else {
       print STDERR "The alias with the name '$name' could not be found.\n";
-      exit 1;
     }
   } else {
     my $len = maxlen( keys %aliases );
@@ -285,50 +342,65 @@ sub print_bootinfo {
   my %options = @_;
 
   require Solaris::DeviceTree::Libdevinfo;
+  require Solaris::DeviceTree::OBP;
+  import Solaris::DeviceTree::OBP qw( :all );
   my $tree = new Solaris::DeviceTree::Libdevinfo;
-  my $aliases = $tree->aliases;
+
+  # Check if we have the permissions to continue
+  {
+    my $prom_props = $tree->prom_props;
+    if( !defined $prom_props ) {
+      die "Cannot access PROM properties. Check the read permissions on /dev/openprom.\n";
+    }
+  }
+
+  my $aliases = obp_aliases( $tree );
 
   print "Bootpath information\n";
   print "--------------------\n\n";
 
-  my $chosen_boot_device = $tree->obp_chosen_boot_device->string;
+  my $chosen_boot_device = obp_chosen_boot_device( $tree );
   print "Last boot device:\n";
-  print "   Boot device:  $chosen_boot_device\n";
-  my $obpPath = resolve_path( aliases => $aliases, path => $chosen_boot_device );
-  print "   OBP path:     ", $obpPath, "\n";
+  print "   Boot device:  ",
+    defined $chosen_boot_device ? $chosen_boot_device->string : "(unknown)", "\n";
+  my $obp_path;
+  if( defined $aliases && defined $chosen_boot_device ) {
+    $obp_path = obp_resolve_path( aliases => $aliases, path => $chosen_boot_device->string );
+  }
+  print "   OBP path:     ", defined $obp_path ? $obp_path : "(unknown)", "\n";
 #  my $node = $tree->__solarisPath( $obpPath );
 #  print "   Solaris path: ", $node->string, "\n";
 
   print "\n";
 
-  my $diag_prop = $tree->find_prop( devfs_path => '/options',
-                                    prom_prop_name => 'diag-switch?' );
-  my $diag_switch = $diag_prop->string;
-  print "Diag-Switch: $diag_switch";
-  if( $diag_switch eq 'true' ) {
-    print " -> Booting from diag-device\n";
-  } elsif( $diag_switch eq 'false' ) {
-    print " -> Booting from boot-device\n";
-  } else {
-    print " -> Unknown state\n";
-  }
+#  my $diag_prop = $tree->find_prop( devfs_path => '/options',
+#                                    prom_prop_name => 'diag-switch?' );
+#  my $diag_switch = $diag_prop->string;
+#  print "Diag-Switch: $diag_switch";
+#  if( $diag_switch eq 'true' ) {
+#    print " -> Booting from diag-device\n";
+#  } elsif( $diag_switch eq 'false' ) {
+#    print " -> Booting from boot-device\n";
+#  } else {
+#    print " -> Unknown state\n";
+#  }
 
   print "Boot-devices in normal mode:\n";
-  foreach my $boot_device ($tree->obp_boot_devices) {
+  foreach my $boot_device (obp_boot_devices($tree)) {
     print "   Boot device:  $boot_device\n";
-    my $obpPath = resolve_path( aliases => $aliases, path => $boot_device );
-    print "   OBP path:     ", $obpPath, "\n";
-#    my $node = $tree->solarisPath( $obpPath );
+    my $obp_path = obp_resolve_path( aliases => $aliases, path => $boot_device );
+    print "   OBP path:     ", $obp_path, "\n";
+#    my $node = $tree->solarisPath( $obp_path );
 #    print "   Solaris path: ", $node->string, "\n";
   }
   print "\n";
 
   print "Boot-devices in diagnostic mode:\n";
-  foreach my $diag_device ($tree->obp_diag_devices) {
+  foreach my $diag_device (obp_diag_devices($tree)) {
     print "   Diag device:  $diag_device\n";
-    my $obpPath = resolve_path( aliases => $aliases, path => $diag_device );
-    print "   OBP path:     ", $obpPath, "\n";
-#    my $node = $tree->solarisPath( $obpPath );
+    my $obp_path = obp_resolve_path( aliases => $aliases, path => $diag_device );
+    print "   OBP path:     ", $obp_path, "\n";
+#    my $node = $tree->solarisPath( $obp_path );
 #    print "   Solaris path: ", $node->string, "\n";
   }
   print "\n";
@@ -338,8 +410,8 @@ sub print_bootinfo {
 # -- disk --
 
 sub print_disk {
-  require Solaris::DeviceTree;
-  my $tree = new Solaris::DeviceTree( use => [ qw( libdevinfo path_to_inst filesystem ) ], );
+  require Solaris::DeviceTree::Overlay;
+  my $tree = make_overlay_tree;
 
   # -> TODO: Select wheter all or only accessible disks should be printed
   # Criteria:
@@ -354,9 +426,7 @@ sub print_disk {
                       $c->block_nodes) {
       next if( !defined $disk->target && !defined $disk->lun );
       print "| +-";
-      print "c", $c->controller if( defined $c->controller );
-      print "t", $disk->target if( defined $disk->target );
-      print "d", $disk->lun if( defined $disk->lun );
+      print $disk->solaris_device || '';
       print " (", $disk->devfs_path, ")\n";
     }
   }
@@ -365,8 +435,7 @@ sub print_disk {
 # -- tape --
 
 sub print_tape {
-  require Solaris::DeviceTree;
-  my $tree = new Solaris::DeviceTree( use => [ qw( libdevinfo path_to_inst filesystem ) ], );
+  my $tree = make_overlay_tree;
 
   # -> TODO: Select wheter all or only accessible tapes should be printed
   # Criteria:
@@ -380,18 +449,16 @@ sub print_tape {
 # -- Network --
 
 sub print_network {
-#  require Solaris::DeviceTree;
-#  my $tree = new Solaris::DeviceTree( use => [ qw( path_to_inst ) ], );
-  require Solaris::DeviceTree::PathToInst;
-  my $tree = new Solaris::DeviceTree::PathToInst;
+  my $tree = make_overlay_tree;
 
   # -> TODO: Historical network nodes only in /etc/path_to_inst should be honored
 
   print "The following network devices have been found:\n";
-  foreach my $nn (sort { $a->driver_name . $a->instance cmp $b->driver_name . $b->instance }
-                  $tree->network_nodes) {
-    my $interface = $nn->driver_name . $nn->instance;
-    print "+-", $interface, " (", $nn->devfs_path, ")\n";
+  foreach my $node (sort { $a->driver_name . $a->instance cmp $b->driver_name . $b->instance }
+                    $tree->network_nodes) {
+#    my $interface = $node->driver_name . $node->instance;
+    my $interface = $node->solaris_device || '';
+    print "+-", $interface, " (", $node->devfs_path, ")\n";
   }
 }
 
@@ -693,21 +760,30 @@ If only specific information is needed you can use the following options:
 
 =item B<-w>, B<--attr[=attr1,...]>
 
-Prints attributes for the device node. If attribute names are specified
-only those attributes are printed or all attributes if no attributes
-names are specified..
+Prints all attributes for the device node. If attribute names are specified
+only those attributes are printed. The following attributes are defined:
+
+  nodename
+  bindingname
+  busaddr
+  compatible
+  drivername
+  driverops
+  instance
+  nodeid
+  state
 
 =item B<-o>, B<--prop[=prop1,...]>
 
-Prints properties for the device node. If property names are
-specified only those properties are printed or all properties if no
-property names are given.
+Prints all properties for the device node. If property names are specified
+only those properties are printed. The names of the properties vary from node
+to node.
 
 =item B<-r>, B<--promprop[=promprop1,...]>
 
-Prints prom properties for the device node. If property names are
-specified only those properties are printed or all properties if no
-property names are given.
+Prints all PROM properties for the device node. If property
+names are specified only those properties are printed. The names of the PROM
+properties vary from node to node.
 
 =item B<-m>, B<--minor>
 

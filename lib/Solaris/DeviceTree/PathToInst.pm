@@ -1,3 +1,6 @@
+#
+# $Header: /cvsroot/devicetool/Solaris-DeviceTree/lib/Solaris/DeviceTree/PathToInst.pm,v 1.6 2003/12/09 13:04:36 honkbude Exp $
+#
 
 package Solaris::DeviceTree::PathToInst;
 
@@ -14,14 +17,12 @@ our %EXPORT_TAGS = ( 'all' => [ qw() ], );
 our @EXPORT = ( @{ $EXPORT_TAGS{'all'} } );
 
 use base qw( Exporter );
-#use vars qw( $_ROOT_NODE );
+our $VERSION = do { my @r = (q$Revision: 1.6 $ =~ /\d+/g); sprintf "%d."."%02d" x $#r, @r }; # must be all one line, for MakeMaker
 
-our @ISA = qw( Solaris::DeviceTree::Node Solaris::DeviceTree::Util );
+our @ISA = qw( Solaris::DeviceTree::Node );
 our $_ROOT_NODE;
 
 use Solaris::DeviceTree::Node;
-use Solaris::DeviceTree::Util;
-#use Solaris::DeviceTree::OFW::Node;
 
 =pod
 
@@ -32,27 +33,41 @@ Solaris::DeviceTree::PathToInst - Perl interface to /etc/path_to_inst
 =head1 SYNOPSIS
 
   use Solaris::DeviceTree::PathToInst;
-  $node = new Solaris::DeviceTree::PathToInst;
-  @children = $node->child_nodes;
+  $tree = new Solaris::DeviceTree::PathToInst;
+  $tree = new Solaris::DeviceTree::PathToInst( filename => '/a/etc/path_to_inst' );
+  $root = $node->root_node;
+  $path = $node->devfs_path;
+  $nodename = $node->node_name;
+  $busaddr = $node->bus_addr;
+  $instance = $node->instance;
+  $drivername = $node->driver_name;
 
 =head1 DESCRIPTION
 
-The C<Solaris::DeviceTree::PathToInst> module implements access to the
-Solaris driver configuration file C</etc/path_to_inst> via a hierarchical
-tree structure. The API of this class contains all methods from the
-C<Solaris::DeviceTree> applicable to this context.
+This module implements the L<Solaris::DeviceTree::Node> interface and
+allows access to the Solaris driver configuration file C</etc/path_to_inst> via a hierarchical
+tree structure. The API of this class overwrites methods from the
+base class applicable to this context.
+
+A line in the C<path_to_inst> looks like this:
+
+  "<devfs_path>" <instance> "<driver_name>"
+
+The C<devfs_path> is build out of the components
+
+  <node_name>@<bus_addr>/<node_name>@<bus_addr>/...
+
+and it is split at the C</> to build the node hierarchy.
 
 =head1 METHODS
 
 The following methods are available:
 
-=head3 $node = new Solaris::DeviceTree::PathToInst;
+=head2 new
 
-=head3 $node = new Solaris::DeviceTree::PathToInst( filename => '/a/etc/path_to_inst' );
-
-The constructor takes a location of a path_to_inst file as data source
-and returns a reference to the root node object. If no path_to_inst
-file is given the file from the running system at /etc/path_to_inst is read.
+The constructor takes an optional named option C<filename> to
+a location of a C<path_to_inst> file and returns a reference to the root node object.
+If no filename is given the file from the running system at C</etc/path_to_inst> is used.
 
 =cut
 
@@ -69,7 +84,6 @@ sub new {
     $_ROOT_NODE->{_file} = $params{filename},
     $_ROOT_NODE->{_physical_name} = undef;
     $_ROOT_NODE->{_instance_number} = undef;
-    $_ROOT_NODE->{_binding_name} = undef;
 
     while( <PTI> ) {
       chomp;
@@ -77,8 +91,8 @@ sub new {
       next if /^$/;	# skip empty lines
 
       # According to path_to_inst(4) a line looks like this:
-      #   "physical name" instance number "driver binding name"
-      my ($physical_name, $instance_number, $driver_binding_name) =
+      #   "physical name" instance number "driver name"
+      my ($physical_name, $instance_number, $driver_name) =
         /^"([^"]+)"\s+(\d+)\s+"([^"]+)"$/;
 
       my @path_components = split( m!/!, $physical_name );
@@ -88,7 +102,7 @@ sub new {
 
       $_ROOT_NODE->_insert( physical_path => $physical_name,
         path_components => \@path_components,
-        instance => $instance_number, driver => $driver_binding_name );
+        instance => $instance_number, driver => $driver_name );
     }
     close PTI;
 
@@ -106,7 +120,6 @@ sub _new_child {
   my $this = $parent->_new_node( parent => $parent );
   $this->{_physical_name} = $params{physical_name};
   $this->{_node_name} = $params{node_name};
-  $this->{_binding_name} = $params{binding_name};
   $this->{_instance_number} = $params{instance_number};
   $this->{_bus_addr} = $params{bus_addr};
 
@@ -158,6 +171,14 @@ sub _insert {
   $node;
 }
 
+=pod
+
+=head2 root_node
+
+Returns the root node of the tree.
+
+=cut
+
 # Overwrite method of base class
 sub root_node {
   my $this = shift;
@@ -169,7 +190,7 @@ sub root_node {
 
 =pod
 
-=head3 $path = $node->devfs_path
+=head2 devfs_path
 
 Returns the physical path assocatiated with this node.
 
@@ -184,10 +205,10 @@ sub devfs_path {
 
 =pod
 
-=head3 $nodename = $node->node_name;
+=head2 node_name
 
-Returns the name of the node. The value is used to build the physical
-path. It is undefined for the root node and defined for all other nodes.
+Returns the name of the node. The value is derived from the L</devfs_path>
+path. It is undefined for the root node and guaranteed to be defined for all other nodes.
 
 =pod
 
@@ -200,20 +221,7 @@ sub node_name {
 
 =pod
 
-=head3 $bindingname = $node->binding_name;
-
-Returns the binding name of the driver for the node.
-
-=cut
-
-sub binding_name {
-  my $this = shift;
-  return $this->{_binding_name};
-}
-
-=pod
-
-=head3 $drivername = $node->driver_name;
+=head2 driver_name
 
 Returns the driver name for the node.
 
@@ -226,7 +234,7 @@ sub driver_name {
 
 =pod
 
-=head3 $busaddr = $node->bus_addr;
+=head2 bus_addr
 
 Returns the address on the bus for this node. C<undef> is returned
 if a bus address has not been assigned to the device. A zero-length
@@ -241,7 +249,7 @@ sub bus_addr {
 
 =pod
 
-=head3 $inst = $node->instance;
+=head2 instance
 
 Returns the instance number for this node of the bound driver.
 C<undef> is returned if no instance number has been assigned.
@@ -254,29 +262,7 @@ sub instance {
 }
 
 
-# Default implementations should go into the mixin class Solaris::DeviceTree::Util
-#sub compatible_names { return (); }
-#sub devid { return undef; }
-#sub driver_ops { return (); }
-#sub nodeid { return undef; }
-
 =pod
-
-=head1 IMPLEMENTATION DETAILS
-
-Because the methods are all read-only the object is implemented as
-singleton and the same reference gets returned every time.
-
-
-=head1 BUGS
-
-  * The singleton implementation keeps only one instance of
-    this class. If multiple calls to the constructor are issued
-    with different filenames the returned values are always from
-    the path_to_inst initially specified.
-
-=head1 EXAMPLES
-
 
 =head1 AUTHOR
 
@@ -285,7 +271,7 @@ Copyright 1999-2003 Dagobert Michelsen.
 
 =head1 SEE ALSO
 
-C<path_to_inst(4)>
+L<Solaris::DeviceTree>, L<Solaris::DeviceTree::Node>, L<path_to_inst(4)>.
 
 =cut
 

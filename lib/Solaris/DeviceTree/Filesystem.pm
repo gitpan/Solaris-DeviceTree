@@ -1,3 +1,6 @@
+#
+# $Header: /cvsroot/devicetool/Solaris-DeviceTree/lib/Solaris/DeviceTree/Filesystem.pm,v 1.10 2003/12/12 11:11:55 honkbude Exp $
+#
 
 package Solaris::DeviceTree::Filesystem;
 
@@ -10,9 +13,9 @@ our %EXPORT_TAGS = ( 'all' => [ qw() ], );
 our @EXPORT = ( @{ $EXPORT_TAGS{'all'} } );
 
 use base qw( Exporter );
+our $VERSION = do { my @r = (q$Revision: 1.10 $ =~ /\d+/g); sprintf "%d."."%02d" x $#r, @r }; # must be all one line, for MakeMaker
 
-# -> TODO: Is this really a ::Util? Or should this better be moved to ::Node?)
-our @ISA = qw( Solaris::DeviceTree::Node Solaris::DeviceTree::Util );
+our @ISA = qw( Solaris::DeviceTree::Node );
 our $_ROOT_NODE;
 
 use Solaris::DeviceTree::Node;
@@ -22,22 +25,27 @@ use Solaris::DeviceTree::Filesystem::MinorNode;
 
 =head1 NAME
 
-Solaris::DeviceTree::Filesystem - Perl interface to /devices
+Solaris::DeviceTree::Filesystem - Perl interface to C</dev> and C</devices>
 
 
 =head1 SYNOPSIS
 
   use Solaris::DeviceTree::Filesystem;
-  $node = new Solaris::DeviceTree::Filesystem;
+  $tree = Solaris::DeviceTree::Filesystem->new;
   @children = $node->child_nodes;
+  $devfs_path = $node->devfs_path;
+  $node_name = $node->node_name;
+  $bus_addr = $node->bus_addr;
+  @minor_nodes = @{$node->minor_nodes}
+  $instance = $node->instance;
 
 
 =head1 DESCRIPTION
 
-The C<Solaris::DeviceTree::Filesystem> module implements access to the
+The L<Solaris::DeviceTree::Filesystem> module implements access to the
 Solaris device configuration files below C</devices> via a hierarchical
 tree structure. The API of this class contains all methods from
-C<Solaris::DeviceTree::Node> applicable to this context.
+L<Solaris::DeviceTree::Node> applicable to this context.
 
 Additionally, the information from C</dev/cfg>, C</dev/dsk>, C</dev/rdsk>
 and C</dev/rmt> is used to identify controller numbers and recognize
@@ -45,8 +53,8 @@ disk- and tape-devices for instance calculation.
 
 Each directory represents a node in the devicetree, each block or
 character special file an associated minor node. Other types of files
-are not allowed below C</devices>. A node in the devicetree always
-has the form
+are not allowed below C</devices>.
+A name of a special file in the devicetree always has the form
 
   <node_name>@<bus_addr>:<device_arguments>
 
@@ -61,11 +69,14 @@ see the documentation of the base class L<Solaris::DeviceTree::Node>.
 The following methods returns values other than the defaults from
 the base class:
 
-=head3 $node = new Solaris::DeviceTree::Filesystem;
+=head2 new
 
 This method contructs a new filesystem tree.
 
 =cut
+
+# -> TODO: It would be nice to allow other filesystem roots
+#          (e. g. /a) for remote mounted filesystems
 
 sub new {
   my ($pkg, %options) = @_;
@@ -127,6 +138,7 @@ sub new {
 
   my @cfg;
   {
+    # -> TODO: A real filehandle would be nicer
     local *DIR;
     opendir DIR, "/dev/cfg";
     @cfg = grep !/^\.\.?$/, readdir( DIR );
@@ -170,6 +182,14 @@ sub new {
   return $_ROOT_NODE;
 }
 
+=pod
+
+=head2 child_nodes
+
+This methods returns the child nodes below this node.
+
+=cut
+
 sub child_nodes {
   my ($this, %options) = @_;
 
@@ -183,7 +203,6 @@ sub child_nodes {
         next if( $file =~ /^\.\.?$/ );
     
         my $filepath = $this->{_dir} . '/' . $file;
-#print "$filepath\n";
         if( !-d $filepath && !-b _ && !-c _ ) {
           warn "File $filepath is neiter a directory nor a block- or\n" .
             "character device and should not belong here!\n";
@@ -201,7 +220,6 @@ sub child_nodes {
             $/x);
   
         my $nodeid = $physical_name;
-#print "$nodeid\n";
         if( !exists $child_nodes{$nodeid} ) {
           my $child = $this->_new_node( parent => $this );
           $child->{_physical_name} = $this->{_physical_name} . '/' . $physical_name;
@@ -235,7 +253,7 @@ sub child_nodes {
 
 =pod
 
-=head3 my $devfs_path = $node->devfs_path
+=head2 devfs_path
 
 This method returns the physical path for this node.
 
@@ -250,10 +268,10 @@ sub devfs_path {
 
 =pod
 
-=head3 my $node_name = $node->node_name
+=head2 node_name
 
-This method returns the name of the node. It is undefined for the root node
-and defined for all other nodes.
+This method returns the name of the node.
+It is undefined for the root node and guaranteed to be defined for all other nodes.
 
 =cut
 
@@ -265,9 +283,9 @@ sub node_name {
 
 =pod
 
-=head3 my $bus_addr = $node->bus_addr
+=head2 bus_addr
 
-This method return the bus address of the node. The bus address can be undefined.
+This method return the bus address of the node. The bus address may be undefined.
 
 =cut
 
@@ -279,11 +297,11 @@ sub bus_addr {
 
 =pod
 
-=head3 my @minor_nodes = @{$node->minor_nodes}
+=head2 minor_nodes
 
-This method returns a reference to a list of all minor nodes associated
-with this node. For a detailed description for the return minor nodes
-see L<Solaris::DeviceTree::Filesystem::MinorNode>.
+This method returns a reference to a list of the minor nodes associated
+with this node. For a detailed description of the methods available
+to access the returned minor nodes see L<Solaris::DeviceTree::Filesystem::MinorNode>.
 
 =cut
 
@@ -298,6 +316,7 @@ sub minor_nodes {
 sub is_block_device {
   return 0;
 }
+# -> TODO
 
 # - a tape is a device located below /dev/rmt or one of the following:
 #     st
@@ -314,13 +333,14 @@ sub is_byte_device {
 
 =pod
 
-=head3 my $instance = $node->instance
+=head2 instance
 
 This method returns the instance number of the driver for this node.
 The instance number is calculated from the minor numbers of the
 minor nodes for the used driver. The type of the calculation depends
-on the implementation of the driver and is therefore specific to
-the driver.
+on the implementation of the driver. If the mapping of minor numbers
+to instances is not known in this method C<undef> is returned.
+Currently C<undef> is returned for all minor numbers for all drivers.
 
 =cut
 
@@ -372,9 +392,6 @@ sub instance {
 
 =pod
 
-=head1 EXAMPLES
-
-
 =head1 AUTHOR
 
 Copyright 1999-2003 Dagobert Michelsen.
@@ -382,7 +399,7 @@ Copyright 1999-2003 Dagobert Michelsen.
 
 =head1 SEE ALSO
 
-  L<Solaris::DeviceTree>
+  L<Solaris::DeviceTree>, L<Solaris::DeviceTree::Filesystem::MinorNode>
 
 =cut
 

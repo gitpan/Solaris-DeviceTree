@@ -1,3 +1,6 @@
+#
+# $Header: /cvsroot/devicetool/Solaris-DeviceTree/lib/Solaris/DeviceTree/Libdevinfo/MinorNode.pm,v 1.5 2003/12/09 13:04:47 honkbude Exp $
+#
 
 package Solaris::DeviceTree::Libdevinfo::MinorNode;
 
@@ -5,6 +8,8 @@ use 5.006;
 use strict;
 use warnings;
 use Solaris::DeviceTree::Libdevinfo::Impl;
+
+our $VERSION = do { my @r = (q$Revision: 1.5 $ =~ /\d+/g); sprintf "%d."."%02d" x $#r, @r }; # must be all one line, for MakeMaker
 
 =pod
 
@@ -18,6 +23,14 @@ Solaris::DeviceTree::Libdevinfo::MinorNode - Minor node of the Solaris devicetre
   $tree = new Solaris::DeviceTree::Libdevinfo;
   @disks = $tree->find_nodes( type => 'disk' );
   @minor = @disks->minor_nodes;
+  $name = $minor->name
+  $path = $minor->devfs_path
+  ($majnum,$minnum) = $minor->devt
+  $type = $minor->nodetype
+  $spectype = $minor->spectype
+  if( $minor->is_raw_device ) { ... }
+  if( $minor->is_block_device ) { ... }
+  $treenode = $minor->node
 
 
 =head1 DESCRIPTION
@@ -32,15 +45,13 @@ Instances are generated only from L<Solaris::DeviceTree::Libdevinfo::minor_nodes
 
 The following methods are available:
 
-=head3 $minor = new
-  Solaris::DeviceTree::Libdevinfo::MinorNode($minor_data, $devinfo_node)
-
-The constructor takes a SWIG-pointer to the C data structure
-of a minor node C<di_minor_t> and a backreference to the
-C<Solaris::DeviceTree::Libdevinfo> object which generates this
-instance.
-
 =cut
+
+# The constructor takes a SWIG-pointer to the C data structure
+# of a minor node C<di_minor_t> and a backreference to the
+# C<Solaris::DeviceTree::Libdevinfo> object which generates this
+# instance.
+
 
 sub new {
   my ($class, $minor, $node) = @_;
@@ -55,7 +66,7 @@ sub new {
 
 =pod
 
-=head3 $name = $minor->name
+=head2 name
 
 Return the name of the minor node. This is used e.g. as suffix
 of the device filename. For disks this is something like ':a' or
@@ -70,7 +81,7 @@ sub name {
 
 =pod
 
-=head3 $path = $minor->devfs_path
+=head2 devfs_path
 
 Return the complete physical path including the minor node
 
@@ -83,10 +94,10 @@ sub devfs_path {
 
 =pod
 
-=head3 ($majnum,$minnum) = $minor->devt
+=head2 devt
 
-Returns the major and minor device number as a pair for the node.
-The major numbers should be the same for all minor nodes return
+Returns the major and minor device number as a list for the node.
+The major numbers should be the same for all minor nodes returned
 by a L<Solaris::DeviceTree::Libdevinfo> node.
 
 =cut
@@ -100,10 +111,10 @@ sub devt {
 
 =pod
 
-=head3 $type = $minor->nodetype
+=head2 nodetype
 
 Returns the nodetype of the minor node. Legal return values
-can be taken from <sys/sunddi.h>. With this call you
+can be taken from C<E<lt>sys/sunddi.hE<gt>>. With this call you
 can differentiate between pseudo nodes, displays and stuff.
 
 =cut
@@ -115,7 +126,7 @@ sub nodetype {
 
 =pod
 
-=head3 $spectype = $minor->spectype
+=head2 spectype
 
 Returns the type of the minor node. Returns
   raw     for a raw device
@@ -138,9 +149,9 @@ sub spectype {
 
 =pod
 
-=head3 if( $minor->is_raw_device ) { ... }
+=head2 is_raw_device
 
-Returns true if the minor node is a raw device
+Returns true if the minor node is a raw device.
 
 =cut
 
@@ -151,9 +162,9 @@ sub is_raw_device {
 
 =pod
 
-=head3 if( $minor->is_block_device ) { ... }
+=head2 is_block_device
 
-Returns true if the minor node is a block device
+Returns true if the minor node is a block device.
 
 =cut
 
@@ -164,10 +175,10 @@ sub is_block_device {
 
 =pod
 
-=head3 $node = $minor->node
+=head2 node
 
-Returns the associated Solaris::DevinfoTree node.
-One Solaris::DevinfoTree node can have multiple minor nodes.
+Returns the associated L<Solaris::DevinfoTree::Libdevinfo> node.
+One treenode can (and usually does) have multiple minor nodes.
 
 =cut
 
@@ -188,7 +199,7 @@ Copyright 1999-2003 Dagobert Michelsen.
 
 =head1 SEE ALSO
 
-L<Solaris::DeviceTree::Libdevinfo>
+L<Solaris::DeviceTree::Libdevinfo>, L<Solaris::DeviceTree::MinorNode>.
 
 =cut
 

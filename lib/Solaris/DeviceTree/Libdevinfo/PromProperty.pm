@@ -1,3 +1,6 @@
+#
+# $Header: /cvsroot/devicetool/Solaris-DeviceTree/lib/Solaris/DeviceTree/Libdevinfo/PromProperty.pm,v 1.6 2003/12/09 13:04:47 honkbude Exp $
+#
 
 package Solaris::DeviceTree::Libdevinfo::PromProperty;
 
@@ -5,6 +8,8 @@ use 5.006;
 use strict;
 use warnings;
 use Solaris::DeviceTree::Libdevinfo::Impl;
+
+our $VERSION = do { my @r = (q$Revision: 1.6 $ =~ /\d+/g); sprintf "%d."."%02d" x $#r, @r }; # must be all one line, for MakeMaker
 
 =pod
 

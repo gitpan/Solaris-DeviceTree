@@ -1,20 +1,15 @@
+#
+# $Header: /cvsroot/devicetool/Solaris-DeviceTree/lib/Solaris/DeviceTree/Overlay/MinorNode.pm,v 1.3 2003/12/12 11:11:55 honkbude Exp $
+#
 
-package Solaris::DeviceTree::MinorNode;
+package Solaris::DeviceTree::Overlay::MinorNode;
 
 use 5.006;
 use strict;
 use warnings;
 use Carp;
 
-require Exporter;
-our %EXPORT_TAGS = ( 'all' => [ qw( ) ] );
-our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
-
-use base qw( Exporter );
-use vars qw( $VERSION @EXPORT );
-
-@EXPORT = qw();
-$VERSION = '0.01';
+our $VERSION = do { my @r = (q$Revision: 1.3 $ =~ /\d+/g); sprintf "%d."."%02d" x $#r, @r }; # must be all one line, for MakeMaker
 
 =pod
 

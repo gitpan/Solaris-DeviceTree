@@ -60,8 +60,9 @@ unsigned int di_state(di_node_t node);
 #define DI_BUS_QUIESCED         0x100
 #define DI_BUS_DOWN             0x200
 
-
+/*
 int isDevidNull( ddi_devid_t devid );
+*/
 
 #define DI_BUS_OPS      0x1
 #define DI_CB_OPS       0x2

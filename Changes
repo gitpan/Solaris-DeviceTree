@@ -11,3 +11,14 @@ Revision history for Perl extension Solaris::DeviceTree.
 	- fixed network name comparison in devtree
 	- improved listing of disks to use controller sorting
 	- documentation enhancements for HTML output
+
+0.03
+	- all files have automatically generated version numbers from CVS
+	- enhanced the test cases not to fail in other environments but mine 
+	- Libdevinfo::prom_props now returns 'undef' if access to the PROM is not possible
+	- selection of attributes and properties now works (devtool -p)
+	- determination of the solaris name in 'devtree -p' is now globally available in solaris_device
+	- cleanup of POD documentation
+	- Solaris::DeviceTree is now Solaris::DeviceTree::Overlay
+	- Solaris::DeviceTree::Util no longer exists. The methods have been split up to
+	  Solaris::DeviceTree::Node and Solaris::DeviceTree::OBP

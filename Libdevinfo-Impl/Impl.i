@@ -1,4 +1,5 @@
 %module "Solaris::DeviceTree::Libdevinfo::Impl"
+
 %{
 #include <sys/types.h>
 #include <sys/mkdev.h>
@@ -32,7 +33,7 @@
 char *di_devfs_path(di_node_t node);
 
 %include typemaps.i
-extern void sdi_prop_devt( di_prop_t prop, int *OUTPUT, int *OUTPUT );
+// extern void sdi_prop_devt( di_prop_t prop, int *OUTPUT, int *OUTPUT );
 extern void devt_majorminor( dev_t devt, int *OUTPUT, int *OUTPUT );
 extern int di_compatible_names(di_node_t node, char **OUTPUT );
 
@@ -125,8 +126,10 @@ int isDI_PROP_NIL( di_prop_t prop ) {
   return ( prop == DI_PROP_NIL ? 1 : 0 );
 }
 
+/*
 void *getProp( di_prop_t prop ) {
 }
+*/
 
 di_prop_t makeDI_PROP_NIL() {
   return (di_prop_t) NULL;

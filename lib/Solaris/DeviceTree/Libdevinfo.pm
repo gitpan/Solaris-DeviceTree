@@ -1,3 +1,6 @@
+#
+# $Header: /cvsroot/devicetool/Solaris-DeviceTree/lib/Solaris/DeviceTree/Libdevinfo.pm,v 1.9 2003/12/12 11:11:55 honkbude Exp $
+#
 
 package Solaris::DeviceTree::Libdevinfo;
 
@@ -7,22 +10,19 @@ use warnings;
 use Carp;
 use English;
 
-require Exporter;
-our %EXPORT_TAGS = ( 'all' => [ qw() ], );
-our @EXPORT = ( @{ $EXPORT_TAGS{'all'} } );
-
-use base qw( Exporter );
-use vars qw( $VERSION @EXPORT @ISA $_ROOT_NODE $_PROM_HANDLE );
-
-@ISA = qw( Solaris::DeviceTree::Util
-           Solaris::DeviceTree::Node );
-$VERSION = '0.01';
+our @ISA = qw( Solaris::DeviceTree::Node );
+our $VERSION = do { my @r = (q$Revision: 1.9 $ =~ /\d+/g); sprintf "%d."."%02d" x $#r, @r }; # must be all one line, for MakeMaker
 
 use Solaris::DeviceTree::Libdevinfo::Impl;
 use Solaris::DeviceTree::Libdevinfo::MinorNode;
 use Solaris::DeviceTree::Libdevinfo::Property;
 use Solaris::DeviceTree::Libdevinfo::PromProperty;
-use Solaris::DeviceTree::Util;
+
+# Package global containing a reference to the Libdevinfo tree (singleton)
+our $_ROOT_NODE;
+
+# Package global containing a reference to the system PROM handle (singleton)
+our $_PROM_HANDLE;
 
 =pod
 
@@ -32,20 +32,41 @@ Solaris::DeviceTree::Libdevinfo - Perl interface to the Solaris devinfo library
 
 =head1 SYNOPSIS
 
+Construction and destruction:
+
   use Solaris::DeviceTree::Libdevinfo;
-  $node = new Solaris::DeviceTree::Libdevinfo;
-  @children = $node->child_nodes;
+  $tree = Solaris::DeviceTree::Libdevinfo->new;
+
+Data access methods:
+
+  $path = $node->devfs_path;
+  $nodename = $node->node_name;
+  $bindingname = $node->binding_name;
+  $busaddr = $node->bus_addr;
+  @cnames = $devtree->compatible_names;
+  $drivername = $devtree->driver_name;
+  %ops = $devtree->driver_ops;
+  $inst = $node->instance;
+  %state = $node->state;
+  $id = $node->nodeid;
+  if( $node->is_pseudo_node ) { ... }
+  if( $node->is_sid_node ) { ... }
+  if( $node->is_prom_node ) { ... }
+  $props = $node->props;
+  $promprops = $node->prom_props;
+  @minor = $node->minor_nodes;
 
 =head1 DESCRIPTION
 
-The C<Solaris::DeviceTree::Libdevinfo> module implements access to the
-Solaris devinfo library C<libdevinfo>. The devicetree is presented as a
-hierarchical collection of nodes.
+This module implements the L<Solaris::DeviceTree::Node> interface
+and allows access to the Solaris devinfo library L<libdevinfo(3lib)>.
+The devicetree is represented as a hierarchical collection of nodes
+in the kernel.
 
 The implementation closely resembles the API of the C library. However,
-due to the object interface there a few differences to keep in mind
-when using this library after reading the manual pages to the original
-L<libdevinfo>:
+due to the object interface and the beauty of Perl there a few differences to keep in mind
+when using this library after reading the manual pages of the original
+L<libdevinfo(3lib)>:
 
 =over 4
 
@@ -56,7 +77,7 @@ The 'di_'-prefix of the function names from the C API has been stripped.
 =item *
 
 The functions C<di_init> and C<di_fini> for generation and destruction of
-devicetrees are now called implicitly in the constructor and destructor.
+devicetrees are now called implicitly during contruction and destruction repectively.
 
 =item *
 
@@ -75,6 +96,12 @@ not needed.
 Getting child nodes via subsequent calls to C<di_child_node> has been
 simplified to a single call to C<child_nodes> returning an array of
 all child nodes.
+
+=item *
+
+Access to C<di_devid> is currently not implemented as the returned
+value is meaningless without access to L<libdevid(3lib)>, which I have not done (yet).
+Requests welcome.
 
 =back
 
@@ -104,14 +131,15 @@ all child nodes.
 
 =head1 METHODS
 
+For tree traversal methods see the base class L<Solaris::DeviceTree::Node>.
+
 The following methods are available:
 
-=head3 $node = new Solaris::DeviceTree::Libdevinfo;
+=head2 new
 
 The constructor returns a reference to the root node object, which is a
-C<Solaris::DeviceTree::Libdevinfo> object. Because the methods are
-all read-only the object is implemented as singleton and same reference
-gets returned every time.
+L<Solaris::DeviceTree::Libdevinfo> object.
+The methods are all read-only.
 
 =cut
 
@@ -165,7 +193,9 @@ sub _prom_handle {
   if( !defined $_PROM_HANDLE ) {
     $_PROM_HANDLE = di_prom_init();
     if( isDI_PROM_HANDLE_NIL( $_PROM_HANDLE ) ) {
-      die "Cannot access PROM device: $ERRNO";
+       # Maybe an exception should be thrown here.
+#      warn "Cannot access PROM device: $ERRNO";
+      $_PROM_HANDLE = undef;
     }
   }
   return $_PROM_HANDLE;
@@ -194,18 +224,7 @@ sub DESTROY {
   }
 }
 
-=pod
-
-=head3 @childs = $node->child_nodes;
-
-=head3 @childs = $node->child_nodes( attr1 => val1, ... )
-
-This method returns a list with all children matching the given
-properties. If no properties are specified all children for the
-node are returned.
-
-=cut
-
+# tree traversal documented in Solaris::DeviceTree::Node
 sub child_nodes {
   my ($this, %options) = @_;
 
@@ -230,15 +249,7 @@ sub child_nodes {
   return @{$this->{_children}};
 }
 
-=pod
-
-=head3 $parent = $node->parent_node;
-
-Returns the parent node for this node. If this is the root
-node, then C<undef> is returned.
-
-=cut
-
+# tree traversal documented in Solaris::DeviceTree::Node
 sub parent_node {
   my $this = shift;
 
@@ -248,14 +259,7 @@ sub parent_node {
   return $this->{_parent};
 }
 
-=pod
-
-=head3 $node = $node->root_node
-
-Returns the root node of the tree.
-
-=cut
-
+# tree traversal documented in Solaris::DeviceTree::Node
 sub root_node {
   my $this = shift;
 
@@ -264,15 +268,7 @@ sub root_node {
   return $_ROOT_NODE;
 }
 
-=pod
-
-=head3 @siblings = $node->sibling_nodes
-
-Returns the list of siblings for the object. A sibling is a child
-from our parent, but not ourselves.
-
-=cut
-
+# tree traversal documented in Solaris::DeviceTree::Node
 sub sibling_nodes {
   my $this = shift;
 
@@ -289,7 +285,7 @@ sub sibling_nodes {
 
 =pod
 
-=head3 $path = $node->devfs_path
+=head2 devfs_path
 
 Returns the physical path assocatiated with this node.
 
@@ -302,7 +298,7 @@ sub devfs_path {
 
 =pod
 
-=head3 $nodename = $node->node_name;
+=head2 node_name
 
 Returns the name of the node.
 
@@ -315,7 +311,7 @@ sub node_name {
 
 =pod
 
-=head3 $bindingname = $node->binding_name;
+=head2 binding_name
 
 Returns the binding name for this node. The binding name
 is the name used by the system to select a driver for the device.
@@ -329,7 +325,7 @@ sub binding_name {
 
 =pod
 
-=head3 $busaddr = $node->bus_addr;
+=head2 bus_addr
 
 Returns the address on the bus for this node. C<undef> is returned
 if a bus address has not been assigned to the device. A zero-length
@@ -345,10 +341,10 @@ sub bus_addr {
 
 =pod
 
-=head3 @compatNames = $devtree->compatible_names;
+=head2 compatible_names
 
 Returns the list of names from compatible device for the current node.
-See the discussion of generic names in L<Writing  Device Drivers> for
+See the discussion of generic names in L<Writing  Device Drivers|> for
 a description of how compatible names are used by Solaris to achieve
 driver binding for the node.
 
@@ -367,24 +363,15 @@ sub compatible_names {
   @compatibleNames;
 }
 
-=pod
-
-=head3 $devid = $devtree->devid;
-
-Returns the device ID for the node, if it is registered. Otherwise, C<undef>
-is returned.
-
-=cut
-
-sub devid {
-  my $this = shift;
-  my $devid = di_devid( $this->{_data} );
-  return (isDevidNull( $devid ) == 0 ? $devid : 0);
-}
+#sub devid {
+#  my $this = shift;
+#  my $devid = di_devid( $this->{_data} );
+#  return (isDevidNull( $devid ) == 0 ? $devid : 0);
+#}
 
 =pod
 
-=head3 $drivername = $devtree->driver_name;
+=head2 driver_name
 
 Returns the name of the driver for the node or C<undef> if the node
 is not bound to any driver.
@@ -398,7 +385,7 @@ sub driver_name {
 
 =pod
 
-=head3 %ops = $devtree->driver_ops;
+=head2 driver_ops
 
 Returns a hash whos keys indicate, which entry points of the
 device driver entry points are supported by the driver bound
@@ -424,7 +411,7 @@ sub driver_ops {
 
 =pod
 
-=head3 $inst = $node->instance;
+=head2 instance
 
 Returns the instance number for this node of the bound driver.
 C<undef> is returned if no instance number has been assigned.
@@ -441,7 +428,7 @@ sub instance {
 
 =pod
 
-=head3 %state = $node->state;
+=head2 state
 
 Returns the driver state attached to this node as hash.
 The presence of the keys in the hash represent the states
@@ -472,7 +459,7 @@ sub state {
 
 =pod
 
-=head3 $id = $node->nodeid;
+=head2 nodeid
 
 Returns the type of the node. Three different strings identifying
 the types can be returned or C<undef> if the type is unknown:
@@ -481,9 +468,8 @@ the types can be returned or C<undef> if the type is unknown:
   SID
   PROM
 
-Nodes of the type C<PROM> may have additional prom properties that
-are defined by the PROM. The properties can be accessed with
-L<prom_props>.
+Nodes of the type C<PROM> may have additional PROM properties that
+are defined by the PROM. The properties can be accessed with L</prom_props>.
 
 =cut
 
@@ -502,10 +488,11 @@ sub nodeid {
 
 =pod
 
-=head3 if( $node->is_pseudo_node ) { ... }
+=head2 is_pseudo_node
+=head2 is_sid_node
+=head2 is_prom_node
 
-Returns the string C<PSEUDO> as true value if the node is a pseudo node or
-C<undef> if not.
+Returns C<true> if the node is of type pseudo / SID / PROM or C<undef> if not.
 
 =cut
 
@@ -514,28 +501,11 @@ sub is_pseudo_node {
   return di_nodeid( $this->{_data} ) == $DI_PSEUDO_NODEID ? 'PSEUDO' : undef;
 }
 
-=pod
-
-=head3 if( $node->is_sid_node ) { ... }
-
-Returns the string C<SID> as true value if the node is a sid node or
-C<undef> if not.
-
-=cut
-
 sub is_sid_node {
   my $this = shift;
   return di_nodeid( $this->{_data} ) == $DI_SID_NODEID ? 'SID' : undef;
 }
 
-=pod
-
-=head3 if( $node->is_prom_node ) { ... }
-
-Returns the string C<PROM> as true value if the node is a prom node or
-C<undef> if not.
-
-=cut
 
 sub is_prom_node {
   my $this = shift;
@@ -545,7 +515,7 @@ sub is_prom_node {
 
 =pod
 
-=head3 $props = $node->props;
+=head2 props
 
 Returns a reference to a hash which maps property names to property values.
 The property values are of class L<Solaris::DeviceTree::Libdevinfo::Property>.
@@ -571,10 +541,12 @@ sub props {
 
 =pod
 
-=head3 $promprops = $node->prom_props;
+=head2 prom_props
 
 Returns a reference to a hash which maps PROM property names to property values.
 The property values are of class L<Solaris::DeviceTree::Libdevinfo::PromProperty>.
+If the PROM device can not be opened (most likely because the process does
+not have the permission to access C</dev/openprom>) then C<undef> is returned.
 
 =cut
 
@@ -585,19 +557,22 @@ sub prom_props {
   if( !exists $this->{_prom_props} ) {
     my %props;
     my $ph = $this->_prom_handle;
-    my $handle = newUCharTHandle();
-    my $prop = di_prom_prop_next( $ph, $node, makeDI_PROM_PROP_NIL() );
-    while( !isDI_PROM_PROP_NIL( $prop ) ) {
-      my $name = di_prom_prop_name( $prop );
-      my $count = di_prom_prop_data( $prop, $handle );
-#      my @data = map { getIndexedByte( $handle, $_ ) } 0 .. $count-1;
-      my $data = pack "C" x $count, map { getIndexedByte( $handle, $_ ) } 0 .. $count-1;
-      $props{ $name } = Solaris::DeviceTree::Libdevinfo::PromProperty->new( $data );
+    if( defined $ph ) {
+      my $handle = newUCharTHandle();
+      my $prop = di_prom_prop_next( $ph, $node, makeDI_PROM_PROP_NIL() );
+      while( !isDI_PROM_PROP_NIL( $prop ) ) {
+        my $name = di_prom_prop_name( $prop );
+        my $count = di_prom_prop_data( $prop, $handle );
+        my $data = pack "C" x $count, map { getIndexedByte( $handle, $_ ) } 0 .. $count-1;
+        $props{ $name } = Solaris::DeviceTree::Libdevinfo::PromProperty->new( $data );
   
-      $prop = di_prom_prop_next( $ph, $node, $prop );
+        $prop = di_prom_prop_next( $ph, $node, $prop );
+      }
+      freeUCharTHandle( $handle );
+      $this->{_prom_props} = \%props;
+    } else {
+      $this->{_prom_props} = undef;
     }
-    freeUCharTHandle( $handle );
-    $this->{_prom_props} = \%props;
   }
 
   return $this->{_prom_props};
@@ -605,7 +580,7 @@ sub prom_props {
 
 =pod
 
-=head3 @minor = $node->minor_nodes;
+=head2 minor_nodes
 
 Returns a reference to a list of all minor nodes which are associated with this node.
 The minor nodes are of class L<Solaris::DeviceTree::Libdevinfo::MinorNode>.
@@ -630,18 +605,16 @@ sub minor_nodes {
 
 =pod
 
-=head1 EXAMPLES
-
-
 =head1 AUTHOR
 
 Copyright 1999-2003 Dagobert Michelsen.
 
-
 =head1 SEE ALSO
 
-C<libdevinfo (3devinfo)>
-C<libdevinfo (3lib)>
+L<libdevinfo(3devinfo)>, L<libdevinfo(3lib)>,
+L<Solaris::DeviceTree::Libdevinfo::MinorNode>,
+L<Solaris::DeviceTree::Libdevinfo::Property>,
+L<Solaris::DeviceTree::Libdevinfo::PromProperty>.
 
 =cut
 

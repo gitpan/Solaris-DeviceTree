@@ -1,29 +1,20 @@
 #
-# $Header: /cvsroot/devicetool/Solaris-DeviceTree/lib/Solaris/DeviceTree.pm,v 1.9 2003/11/28 15:30:23 honkbude Exp $
+# $Header: /cvsroot/devicetool/Solaris-DeviceTree/lib/Solaris/DeviceTree/Overlay.pm,v 1.4 2003/12/12 11:11:55 honkbude Exp $
 #
 
-package Solaris::DeviceTree;
+package Solaris::DeviceTree::Overlay;
 
 use 5.006;
 use strict;
 use warnings;
 
-require Exporter;
-our %EXPORT_TAGS = ( 'all' => [ qw() ] );
-our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
-
-use base qw( Exporter );
-use vars qw( $VERSION @EXPORT );
-
-@EXPORT = qw();
-$VERSION = '0.02';
-our @ISA = qw( Solaris::DeviceTree::Node Solaris::DeviceTree::Util );
+our @ISA = qw( Solaris::DeviceTree::Node );
+our $VERSION = do { my @r = (q$Revision: 1.4 $ =~ /\d+/g); sprintf "%d."."%02d" x $#r, @r }; # must be all one line, for MakeMaker
 
 use Carp;
 use English;
 use Solaris::DeviceTree::Node;
-use Solaris::DeviceTree::Util;
-use Solaris::DeviceTree::MinorNode;
+use Solaris::DeviceTree::Overlay::MinorNode;
 
 use Data::Dumper;
 
@@ -31,36 +22,92 @@ use Data::Dumper;
 
 =head1 NAME
 
-Solaris::DeviceTree - Perl interface to the Solaris devicetree
+Solaris::DeviceTree::Overlay - Unification of multiple devicetrees
 
 =head1 SYNOPSIS
 
-  use Solaris::DeviceTree
-  my $tree = new Solaris::DeviceTree;
-  my @children = $tree->children;
+  use Solaris::DeviceTree::Overlay
+
+Construction and destruction:
+
+  $devtree = Solaris::DeviceTree::Overlay->new( sources => { 'src1' => $tree1, ... } )
+
+Tree traversal:
+
+  @children = $devtree->child_nodes
+  @siblings = $devtree->sibling_nodes
+  $node = $node->parent_node
+  $root = $node->root_node
+
+Methods concerning tree merging:
+
+  @sources = $node->sources
+
+Data access methods:
+
+  $path = $node->devfs_path
+  $instance = $devtree->instance
+  $id = $node->nodeid
+  @compat_names = $devtree->compatible_names
+  ...
 
 =head1 DESCRIPTION
 
-The C<Solaris::DeviceTree> module implements access to the Solaris device
-information. The information is collected from the kernel via access to
-C<libdevinfo>, the contents of the file C</etc/path_to_inst> and
-the filesystem entries below C</dev> and C</devices>. The devicetree is
-presented as a hierarchical collection of node. Each node contains
-the unified information from all available resources.
+The L<Solaris::DeviceTree::Overlay> module implements the L<Solaris::DeviceTree::Node>
+interface to access the Solaris device tree in a unified view from multiple data sources.
+Each data source must implement the L<Solaris::DeviceTree::Node> interface.
+As a general goal the unification checks that the values of all data source comply
+with each other.
+The method used to unify the information depends on the type of the returned value:
 
+=over 4
 
-=head2 METHODS
+=item Scalars
+
+A defined scalar precedes an undefined scalar silently.
+Two defined scalars with the same value are merged together silently.
+Two defined scalars with different values issue a warning and the value
+of the first data source is used.
+
+=item Arrays
+
+Currently only the array from the first defined source is used.
+
+=item Hashes
+
+Currently only the hash from the first defined source is used.
+
+=item Properties and PROM Properties
+
+Properties and PROM properties from all source are merged together by name.
+If two sources define the same property or PROM property
+and have differing values a warning is issued and the first value
+is used.
+
+=item Minor Nodes
+
+Minor nodes from all sources are merged together by name.
+If two sources define the same minor node and the values for
+the attributes of the minor nodes differ a warning is issued
+and the first value is used. 
+
+=item 
+
+=back 4
+
+=head1 METHODS
 
 The following methods are available:
 
-=head3 $devtree = Solaris::DeviceTree->new
+=head2 new
 
-=head3 $devtree = Solaris::DeviceTree->new(
-        use => [ qw( libdevinfo path_to_inst filesystem ) ] );
+The constructor returns a reference to a L<Solaris::DeviceTree::Overlay> object which
+itself implements the L<Solaris::DeviceTree::Node> interface. The instance returned
+represents the root-node of the devicetree. 
 
-The constructor returns a reference to a C<Solaris::DeviceTree> object which
-itself implements the C<Solaris::DeviceTree::Node> interface. The instance returned
-represents the root-node of the devicetree.
+  $devtree = Solaris::DeviceTree::Overlay->new(
+    sources => { 'libdevinfo' => $libdevinfotree, 'pti' => $pathtoinsttree } ]
+  );
 
 =cut
 
@@ -68,25 +115,16 @@ sub new {
   my ($pkg, %params) = @_;
 
   my %sources;
-  foreach my $source (@{$params{use}}) {
-    if( $source eq 'libdevinfo' ) {
-      # The modules are loaded on demand to decrease loading time in
-      # the average case.
-      require Solaris::DeviceTree::Libdevinfo;
-      $sources{libdevinfo} = Solaris::DeviceTree::Libdevinfo->new;
-    } elsif( $source eq 'path_to_inst' ) {
-      require Solaris::DeviceTree::PathToInst;
-      $sources{path_to_inst} = Solaris::DeviceTree::PathToInst->new;
-    } elsif( $source eq 'filesystem' ) {
-      require Solaris::DeviceTree::Filesystem;
-      $sources{filesystem} = Solaris::DeviceTree::Filesystem->new;
-    } else {
-      croak "The specified source '$source' for the devicetree in unknown.";
-    }
+  if( !exists $params{sources} ) {
+    croak "Mandatory option 'sources' not defined.\n";
+  }
+  if( ref( $params{sources} ) ne "HASH" ) {
+    croak "Mandatory option 'sources' must be a reference to a hash array instead of a " .
+      ref( $params{sources} ) . ".\n";
   }
 
   my $this = $pkg->_new_node();
-  $this->{_sources} = \%sources;
+  $this->{_sources} = $params{sources};
   $this->{_child_initialized} = 0;
 
   return $this;
@@ -94,7 +132,7 @@ sub new {
 
 =pod
 
-=head3 $devtree->DESTROY;
+=head2 DESTROY
 
 This methos removes all internal data structures which are associated
 with this object.
@@ -102,14 +140,21 @@ with this object.
 =cut
 
 sub DESTROY {
+  # This does currently not do much (read: nothing)
   my $this = shift;
 }
 
 =pod
 
-=head3 @children = $devtree->child_nodes
+=head2 child_nodes
 
-This method returns a list with all children.
+This method returns a list with the objects of the children for
+all data sources. The nodes are merged using the nodename and the busaddress
+as key.
+
+Example:
+
+  @children = $devtree->child_nodes
 
 =cut
 
@@ -124,7 +169,6 @@ sub child_nodes {
         my $nodeid = $child->node_name;
         $nodeid .= "@" . $child->bus_addr if( defined $child->bus_addr && $child->bus_addr ne "" );
         $child_nodes{$nodeid}->{$source} = $child;
-#print "Source: $source Node-ID: $nodeid Path: ", $child->devfs_path, "\n";
       }
     }
   
@@ -137,6 +181,19 @@ sub child_nodes {
   return $this->SUPER::child_nodes( %options );
 }
 
+=pod
+
+=head2 sources
+
+This method returns a list containing the names of all data sources
+which were used to build this node.
+
+Example:
+
+  @sources = $node->sources
+
+=cut
+
 sub sources {
   my ($this, %options) = @_;
 
@@ -145,41 +202,57 @@ sub sources {
 
 =pod
 
-=head3 $node = $devtree->parent_node
+=head2 parent_node
 
 Returns the parent node for the object. If the object is toplevel,
 then C<undef> is returned.
 
+Example:
+
+  $node = $devtree->parent_node
+
 =cut
 
 # This is inherited from ::Node
 
 =pod
 
-=head3 $node = $devtree->root_node
+=head2 root_node
 
 Returns the root node of the tree.
 
+Example:
+
+  $node = $devtree->root_node
+
 =cut
 
 # This is inherited from ::Node
 
 =pod
 
-=head3 @siblings = $devtree->sibling_nodes
+=head2 sibling_nodes
 
 Returns the list of siblings for the object. A sibling is a child
 from our parent, but not ourselves.
 
+Example:
+
+  @siblings = $devtree->sibling_nodes
+
 =cut
 
 # This is inherited from ::Node
 
 =pod
 
-=head3 $path = $devtree->devfs_path
+=head2 devfs_path
 
 Returns the physical path assocatiated with this node.
+
+Example:
+
+  $path = $devtree->devfs_path
 
 =cut
 
@@ -188,7 +261,7 @@ Returns the physical path assocatiated with this node.
 
 BEGIN {
 
-for my $scalar_method (qw( devfs_path node_name binding_name instance bus_addr driver_name controller target lun slice )) {
+for my $scalar_method (qw( devfs_path node_name binding_name instance bus_addr driver_name nodeid controller target lun slice )) {
   eval qq{
     sub $scalar_method {
       my (\$this, \%params) = \@_;
@@ -222,11 +295,26 @@ for my $scalar_method (qw( devfs_path node_name binding_name instance bus_addr d
 
 sub compatible_names {
   my ($this) = @_;
-  foreach my $source (keys %{$this->{_sources}}) {
-    my @compatible_names = $this->{_sources}->{$source}->compatible_names;
-    return @compatible_names if( @compatible_names );
+
+  if( !exists $this->{_compatible_names} ) {
+    my @compatible_names;
+    my $selected_source = undef;
+    foreach my $source (keys %{$this->{_sources}}) {
+      my @cnames = $this->{_sources}->{$source}->compatible_names;
+      next if( !@cnames );
+      if( defined $selected_source ) {
+        warn "Differing values for compatible_names:\n" .
+          "  $source: " . join( " ", @compatible_names ) . "\n" .
+          "  $selected_source: " . join( " ", @cnames ) . "\n";
+      } else {
+        @compatible_names = @cnames;
+        $selected_source = $source;
+      }
+    }
+    $this->{_compatible_names} = \@compatible_names;
   }
-  return ();
+
+  return @{$this->{_compatible_names}};
 }
 
 sub driver_ops {
@@ -246,6 +334,27 @@ sub state {
   }
   return ();
 }
+
+=pod
+
+=head2 nodeid
+
+Returns the type of the node. Three different strings identifying
+the types can be returned or C<undef> if the type is unknown:
+
+  PSEUDO
+  SID
+  PROM
+
+Nodes of the type C<PROM> may have additional prom properties that
+are defined by the PROM. The properties can be accessed with
+L<prom_props>.
+
+Example:
+
+  $id = $node->nodeid
+
+=cut
 
 sub props {
   my ($this, %options) = @_;
@@ -291,54 +400,70 @@ sub prom_props {
 
 =pod
 
-=head3 $nodename = $devtree->node_name;
+=head2 node_name
 
 Returns the name of the node.
 
+Example:
 
-=head3 $bindingname = $devtree->binding_name;
+  $nodename = $devtree->node_name
+
+=head2 binding_name
 
 Returns the binding name for this node. The binding name
 is the name used by the system to select a driver for the device.
 
+Example:
 
-=head3 $busadr = $devtree->bus_addr;
+  $bindingname = $devtree->binding_name
+
+=head2 bus_addr
 
 Returns the address on the bus for this node. C<undef> is returned
 if a bus address has not been assigned to the device. A zero-length
 string may be returned and is considered a valid bus address.
 
+Example:
 
-=head3 $instance = $devtree->instance;
+  $busadr = $devtree->bus_addr
+
+=head2 instance
 
 Returns the instance number of the driver bound to the node. If no driver
 is bound to the node C<undef> is returned.
 
+Example:
 
-=head3 @compat_names = $devtree->compatible_names;
+  $instance = $devtree->instance
+
+=head2 compatible_names
 
 Returns the list of names from compatible device for the current node.
 See the discussion of generic names in L<Writing  Device Drivers> for
 a description of how compatible names are used by Solaris to achieve
 driver binding for the node.
 
+Example:
 
-=head3 $devid = $devtree->devid
+  @compat_names = $devtree->compatible_names
 
-Returns the device ID for the node, if it is registered. Otherwise, C<undef>
-is returned.
-
-
-=head3 $drivername = $devtree->driver_name;
+=head2 driver_name
 
 Returns the name of the driver for the node or C<undef> if the node
 is not bound to any driver.
 
+Example:
 
-=head3 @minor = @{$node->minor_nodes}
+  $drivername = $devtree->driver_name
 
-Returns a list of all minor nodes which are associated with this node.
-The minor nodes are of class L<Solaris::DeviceTree::MinorNode>.
+=head2 minor_nodes
+
+Returns a reference to a list of all minor nodes which are associated with this node.
+The minor nodes are of class L<Solaris::DeviceTree::Overlay::MinorNode>.
+
+Example:
+
+  @minor = @{$node->minor_nodes}
 
 =cut
 
@@ -354,7 +479,7 @@ sub minor_nodes {
       $mlist ||= [];
       foreach my $minor_node (@$mlist) {
         $minor_nodes{$minor_node->name} ||= 
-          Solaris::DeviceTree::MinorNode->new(
+          Solaris::DeviceTree::Overlay::MinorNode->new(
             node => $this,
             name => $minor_node->name,
           );
@@ -431,7 +556,7 @@ sub minor_nodes {
 
 =head1 EXAMPLES
 
-=head3 Print the device pathes contained in the C</etc/path_to_inst>
+=head2 Print the device pathes contained in the C</etc/path_to_inst>
 
   use Solaris::DeviceTree;
 
@@ -452,10 +577,6 @@ Copyright 1999-2003 Dagobert Michelsen.
 
 L<Solaris::DeviceTree::PathToInst>, L<Solaris::DeviceTree::Filesystem>,
 L<Solaris::DeviceTree::Libdevinfo>.
-
-=head1 BUGS
-
- * As an additional feature access to the libcfgadm should be included.
 
 =cut
 

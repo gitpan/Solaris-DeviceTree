@@ -221,7 +221,7 @@ SWIG_TypeClientData(swig_type_info *ti, void *clientdata) {
  * perl5.swg
  *
  * Perl5 runtime library
- * $Header: /cvsroot/devicetool/Solaris-DeviceTree/Libdevinfo-Impl/Impl_wrap.c,v 1.3 2003/09/15 14:41:54 honkbude Exp $
+ * $Header: /cvsroot/devicetool/Solaris-DeviceTree/Libdevinfo-Impl/Impl_wrap.c,v 1.4 2003/12/10 10:52:56 honkbude Exp $
  * ----------------------------------------------------------------------------- */
 
 #define SWIGPERL
@@ -568,10 +568,9 @@ static void _swig_create_magic(CPerlObj *pPerl, SV *sv, const char *name, int (C
 #define  SWIGTYPE_p_di_prom_prop_t swig_types[6] 
 #define  SWIGTYPE_p_p_uchar_t swig_types[7] 
 #define  SWIGTYPE_p_di_minor_t swig_types[8] 
-#define  SWIGTYPE_p_void swig_types[9] 
-#define  SWIGTYPE_p_p_int swig_types[10] 
-#define  SWIGTYPE_p_int swig_types[11] 
-static swig_type_info *swig_types[13];
+#define  SWIGTYPE_p_p_int swig_types[9] 
+#define  SWIGTYPE_p_int swig_types[10] 
+static swig_type_info *swig_types[12];
 
 /* -------- TYPES TABLE (END) -------- */
 
@@ -625,7 +624,6 @@ extern void di_prom_fini(di_prom_handle_t);
 extern di_prom_prop_t di_prom_prop_next(di_prom_handle_t,di_node_t,di_prom_prop_t);
 extern char *di_prom_prop_name(di_prom_prop_t);
 extern int di_prom_prop_data(di_prom_prop_t,uchar_t **);
-extern void sdi_prop_devt(di_prop_t,int *,int *);
 extern void devt_majorminor(dev_t,int *,int *);
 extern int di_compatible_names(di_node_t,char **);
 
@@ -715,8 +713,10 @@ int isDI_PROP_NIL( di_prop_t prop ) {
   return ( prop == DI_PROP_NIL ? 1 : 0 );
 }
 
+/*
 void *getProp( di_prop_t prop ) {
 }
+*/
 
 di_prop_t makeDI_PROP_NIL() {
   return (di_prop_t) NULL;
@@ -1175,37 +1175,6 @@ XS(_wrap_di_state) {
         
         ST(argvi) = sv_newmortal();
         sv_setuv(ST(argvi++), (UV) result);
-        XSRETURN(argvi);
-        fail:
-        (void) _swigerr;
-    }
-    croak(_swigerr);
-}
-
-
-XS(_wrap_isDevidNull) {
-    char _swigmsg[SWIG_MAX_ERRMSG] = "";
-    const char *_swigerr = _swigmsg;
-    {
-        ddi_devid_t arg1 ;
-        int result;
-        int argvi = 0;
-        dXSARGS;
-        
-        if ((items < 1) || (items > 1)) {
-            SWIG_croak("Usage: isDevidNull(devid);");
-        }
-        {
-            ddi_devid_t * argp;
-            if (SWIG_ConvertPtr(ST(0),(void **) &argp, SWIGTYPE_p_ddi_devid_t,0) < 0) {
-                SWIG_croak("Type error in argument 1 of isDevidNull. Expected _p_ddi_devid_t");
-            }
-            arg1 = *argp;
-        }
-        result = (int)isDevidNull(arg1);
-        
-        ST(argvi) = sv_newmortal();
-        sv_setiv(ST(argvi++), (IV) result);
         XSRETURN(argvi);
         fail:
         (void) _swigerr;
@@ -1989,57 +1958,6 @@ XS(_wrap_di_devfs_path) {
 }
 
 
-XS(_wrap_sdi_prop_devt) {
-    char _swigmsg[SWIG_MAX_ERRMSG] = "";
-    const char *_swigerr = _swigmsg;
-    {
-        di_prop_t arg1 ;
-        int *arg2 = (int *) 0 ;
-        int *arg3 = (int *) 0 ;
-        int temp2 ;
-        int temp3 ;
-        int argvi = 0;
-        dXSARGS;
-        
-        arg2 = &temp2;
-        arg3 = &temp3;
-        if ((items < 1) || (items > 1)) {
-            SWIG_croak("Usage: sdi_prop_devt(prop);");
-        }
-        {
-            di_prop_t * argp;
-            if (SWIG_ConvertPtr(ST(0),(void **) &argp, SWIGTYPE_p_di_prop_t,0) < 0) {
-                SWIG_croak("Type error in argument 1 of sdi_prop_devt. Expected _p_di_prop_t");
-            }
-            arg1 = *argp;
-        }
-        sdi_prop_devt(arg1,arg2,arg3);
-        
-        
-        {
-            if (argvi >= items) {
-                EXTEND(sp,1);
-            }
-            ST(argvi) = sv_newmortal();
-            sv_setiv(ST(argvi),(IV) *(arg2));
-            argvi++;
-        }
-        {
-            if (argvi >= items) {
-                EXTEND(sp,1);
-            }
-            ST(argvi) = sv_newmortal();
-            sv_setiv(ST(argvi),(IV) *(arg3));
-            argvi++;
-        }
-        XSRETURN(argvi);
-        fail:
-        (void) _swigerr;
-    }
-    croak(_swigerr);
-}
-
-
 XS(_wrap_devt_majorminor) {
     char _swigmsg[SWIG_MAX_ERRMSG] = "";
     const char *_swigerr = _swigmsg;
@@ -2501,37 +2419,6 @@ XS(_wrap_isDI_PROP_NIL) {
 }
 
 
-XS(_wrap_getProp) {
-    char _swigmsg[SWIG_MAX_ERRMSG] = "";
-    const char *_swigerr = _swigmsg;
-    {
-        di_prop_t arg1 ;
-        void *result;
-        int argvi = 0;
-        dXSARGS;
-        
-        if ((items < 1) || (items > 1)) {
-            SWIG_croak("Usage: getProp(prop);");
-        }
-        {
-            di_prop_t * argp;
-            if (SWIG_ConvertPtr(ST(0),(void **) &argp, SWIGTYPE_p_di_prop_t,0) < 0) {
-                SWIG_croak("Type error in argument 1 of getProp. Expected _p_di_prop_t");
-            }
-            arg1 = *argp;
-        }
-        result = (void *)getProp(arg1);
-        
-        ST(argvi) = sv_newmortal();
-        SWIG_MakePtr(ST(argvi++), (void *) result, SWIGTYPE_p_void,0);
-        XSRETURN(argvi);
-        fail:
-        (void) _swigerr;
-    }
-    croak(_swigerr);
-}
-
-
 XS(_wrap_makeDI_PROP_NIL) {
     char _swigmsg[SWIG_MAX_ERRMSG] = "";
     const char *_swigerr = _swigmsg;
@@ -2749,7 +2636,6 @@ static swig_type_info _swigt__p_p_char[] = {{"_p_p_char", 0, "char **", 0},{"_p_
 static swig_type_info _swigt__p_di_prom_prop_t[] = {{"_p_di_prom_prop_t", 0, "di_prom_prop_t *", 0},{"_p_di_prom_prop_t"},{0}};
 static swig_type_info _swigt__p_p_uchar_t[] = {{"_p_p_uchar_t", 0, "uchar_t **", 0},{"_p_p_uchar_t"},{0}};
 static swig_type_info _swigt__p_di_minor_t[] = {{"_p_di_minor_t", 0, "di_minor_t *", 0},{"_p_di_minor_t"},{0}};
-static swig_type_info _swigt__p_void[] = {{"_p_void", 0, "void *", 0},{"_p_void"},{0}};
 static swig_type_info _swigt__p_p_int[] = {{"_p_p_int", 0, "int **", 0},{"_p_p_int"},{0}};
 static swig_type_info _swigt__p_int[] = {{"_p_int", 0, "int *", 0},{"_p_int"},{0}};
 
@@ -2763,7 +2649,6 @@ _swigt__p_p_char,
 _swigt__p_di_prom_prop_t, 
 _swigt__p_p_uchar_t, 
 _swigt__p_di_minor_t, 
-_swigt__p_void, 
 _swigt__p_p_int, 
 _swigt__p_int, 
 0
@@ -2823,7 +2708,6 @@ static swig_command_info swig_commands[] = {
 {"Solaris::DeviceTree::Libdevinfo::Impl::di_devid", _wrap_di_devid},
 {"Solaris::DeviceTree::Libdevinfo::Impl::di_driver_name", _wrap_di_driver_name},
 {"Solaris::DeviceTree::Libdevinfo::Impl::di_state", _wrap_di_state},
-{"Solaris::DeviceTree::Libdevinfo::Impl::isDevidNull", _wrap_isDevidNull},
 {"Solaris::DeviceTree::Libdevinfo::Impl::di_driver_ops", _wrap_di_driver_ops},
 {"Solaris::DeviceTree::Libdevinfo::Impl::di_instance", _wrap_di_instance},
 {"Solaris::DeviceTree::Libdevinfo::Impl::di_nodeid", _wrap_di_nodeid},
@@ -2846,7 +2730,6 @@ static swig_command_info swig_commands[] = {
 {"Solaris::DeviceTree::Libdevinfo::Impl::di_prom_prop_name", _wrap_di_prom_prop_name},
 {"Solaris::DeviceTree::Libdevinfo::Impl::di_prom_prop_data", _wrap_di_prom_prop_data},
 {"Solaris::DeviceTree::Libdevinfo::Impl::di_devfs_path", _wrap_di_devfs_path},
-{"Solaris::DeviceTree::Libdevinfo::Impl::sdi_prop_devt", _wrap_sdi_prop_devt},
 {"Solaris::DeviceTree::Libdevinfo::Impl::devt_majorminor", _wrap_devt_majorminor},
 {"Solaris::DeviceTree::Libdevinfo::Impl::di_compatible_names", _wrap_di_compatible_names},
 {"Solaris::DeviceTree::Libdevinfo::Impl::isDDI_DEV_T_NONE", _wrap_isDDI_DEV_T_NONE},
@@ -2862,7 +2745,6 @@ static swig_command_info swig_commands[] = {
 {"Solaris::DeviceTree::Libdevinfo::Impl::UCharTString", _wrap_UCharTString},
 {"Solaris::DeviceTree::Libdevinfo::Impl::isDI_NODE_NIL", _wrap_isDI_NODE_NIL},
 {"Solaris::DeviceTree::Libdevinfo::Impl::isDI_PROP_NIL", _wrap_isDI_PROP_NIL},
-{"Solaris::DeviceTree::Libdevinfo::Impl::getProp", _wrap_getProp},
 {"Solaris::DeviceTree::Libdevinfo::Impl::makeDI_PROP_NIL", _wrap_makeDI_PROP_NIL},
 {"Solaris::DeviceTree::Libdevinfo::Impl::makeDI_MINOR_NIL", _wrap_makeDI_MINOR_NIL},
 {"Solaris::DeviceTree::Libdevinfo::Impl::isDI_MINOR_NIL", _wrap_isDI_MINOR_NIL},
