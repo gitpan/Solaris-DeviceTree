@@ -9,7 +9,14 @@ use warnings;
 
 BEGIN { plan tests => 24 };
 
-#system( "env" );
+system( "/usr/bin/env" );
+
+# Use the right perl for the scripts, because the scripts have
+# not been installed and therefore the header with the execution
+# program is wrong.
+
+my $perl = $ENV{'_'};
+print "Perl: $perl\n";
 
 sub checkrun {
   my ($cmd, %args) = @_;
@@ -37,44 +44,44 @@ my $devtree = $ENV{'PWD'} . '/' . $ENV{'REGRESSION_TEST'};
 $devtree =~ s!/[^/]+/[^/]+$!/scripts/devtree!;
 
 if( ! -x $devtree ) {
-  die "Cannot found devtree. It should be at\n  $devtree\nbut it's not there.";
+  die "Cannot find devtree. It should be at\n  $devtree\nbut it's not there.";
 }
 
 # Tests 1-12 - tree printing
-checkrun( "$devtree -p" );
-checkrun( "$devtree --print" );
-checkrun( "$devtree -pv" );
-checkrun( "$devtree --print --all" );
-checkrun( "$devtree -pw" );
-checkrun( "$devtree --print --attr" );
-checkrun( "$devtree -po" );
-checkrun( "$devtree --print --prop" );
-checkrun( "$devtree -pr" );
-checkrun( "$devtree --print --promprop" );
-checkrun( "$devtree -pm" );
-checkrun( "$devtree --print --minor" );
+checkrun( "$perl $devtree -p" );
+checkrun( "$perl $devtree --print" );
+checkrun( "$perl $devtree -pv" );
+checkrun( "$perl $devtree --print --all" );
+checkrun( "$perl $devtree -pw" );
+checkrun( "$perl $devtree --print --attr" );
+checkrun( "$perl $devtree -po" );
+checkrun( "$perl $devtree --print --prop" );
+checkrun( "$perl $devtree -pr" );
+checkrun( "$perl $devtree --print --promprop" );
+checkrun( "$perl $devtree -pm" );
+checkrun( "$perl $devtree --print --minor" );
 
 # Tests 13-16 - aliases
-checkrun( "$devtree -a" );
-checkrun( "$devtree --aliases" );
-checkrun( "$devtree --aliases=disk" );
-checkrun( "$devtree -a disk" );
+checkrun( "$perl $devtree -a" );
+checkrun( "$perl $devtree --aliases" );
+checkrun( "$perl $devtree --aliases=disk" );
+checkrun( "$perl $devtree -a disk" );
 
 # Tests 17-18 - disks
-checkrun( "$devtree -d" );
-checkrun( "$devtree --disks" );
+checkrun( "$perl $devtree -d" );
+checkrun( "$perl $devtree --disks" );
 
 # Tests 19-20 - tapes
-checkrun( "$devtree -t" );
-checkrun( "$devtree --tapes" );
+checkrun( "$perl $devtree -t" );
+checkrun( "$perl $devtree --tapes" );
 
 # Tests 21-22 - networks
-checkrun( "$devtree -n" );
-checkrun( "$devtree --networks" );
+checkrun( "$perl $devtree -n" );
+checkrun( "$perl $devtree --networks" );
 
 # Tests 23-24 - boot information
-checkrun( "$devtree -b" );
-checkrun( "$devtree --bootinfo" );
+checkrun( "$perl $devtree -b" );
+checkrun( "$perl $devtree --bootinfo" );
 
 
 exit 0;

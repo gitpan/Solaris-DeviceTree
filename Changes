@@ -4,3 +4,10 @@ Revision history for Perl extension Solaris::DeviceTree.
 	- original version; created by h2xs 1.21 with options
 		-XA -n Solaris::DeviceTree
 
+0.02
+	- did some testing. libdevinfo is available but does not work under Solaris 2.6.
+	  Solaris 7, 8, 9 on Sparc are ok. Fixed Makefile.PL
+	- made makepkg to build package for Solaris 9 using SUNWpl5u
+	- fixed network name comparison in devtree
+	- improved listing of disks to use controller sorting
+	- documentation enhancements for HTML output

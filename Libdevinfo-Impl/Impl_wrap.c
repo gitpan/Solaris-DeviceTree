@@ -221,7 +221,7 @@ SWIG_TypeClientData(swig_type_info *ti, void *clientdata) {
  * perl5.swg
  *
  * Perl5 runtime library
- * $Header: /cvs/projects/SWIG/Lib/perl5/perlrun.swg,v 1.3 2002/11/30 22:10:08 beazley Exp $
+ * $Header: /cvsroot/devicetool/Solaris-DeviceTree/Libdevinfo-Impl/Impl_wrap.c,v 1.3 2003/09/15 14:41:54 honkbude Exp $
  * ----------------------------------------------------------------------------- */
 
 #define SWIGPERL

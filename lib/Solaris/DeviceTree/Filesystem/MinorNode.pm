@@ -64,10 +64,7 @@ Instances are generated only from L<Solaris::DeviceTree::Filesystem::minor_nodes
 The following methods are available:
 
 
-=over 4
-
-=item $minor = new
-  Solaris::DeviceTree::Libdevinfo::MinorNode($filepath, $devtree_node);
+=head2 $minor = new Solaris::DeviceTree::Libdevinfo::MinorNode($filepath, $devtree_node);
 
 The constructor takes a string holding the absolute path to
 the device file and a backreference to the
@@ -102,7 +99,7 @@ sub new {
 
 =pod
 
-=item $name = $minor->name;
+=head2 $name = $minor->name;
 
 Return the name of the minor node. This is used e.g. as suffix
 of the device filename. For disks this is something like 'a' or
@@ -117,7 +114,7 @@ sub name {
 
 =pod
 
-=item $path = $minor->devfs_path;
+=head2 $path = $minor->devfs_path;
 
 Return the complete physical path including the minor node
 
@@ -130,7 +127,7 @@ sub devfs_path {
 
 =pod
 
-=item ($majnum,$minnum) = $minor->devt;
+=head2 ($majnum,$minnum) = $minor->devt;
 
 Return the major and minor device number as a pair for the node.
 The major numbers should be the same for all minor nodes return
@@ -145,7 +142,7 @@ sub devt {
 
 =pod
 
-=item $type = $minor->nodetype
+=head2 $type = $minor->nodetype
 
 Return the nodetype of the minor node. Because we can't
 find that out by looking at the filesystem we always return
@@ -159,7 +156,7 @@ sub nodetype {
 
 =pod
 
-=item $spectype = $minor->spectype
+=head2 $spectype = $minor->spectype
 
 Returns the type of the minor node. Returns the scalar values
   $S_IFCHR   for a raw device
@@ -181,7 +178,7 @@ sub spectype {
 
 =pod
 
-=item if( $minor->is_raw_device ) { ... }
+=head2 if( $minor->is_raw_device ) { ... }
 
 Returns true if the minor node is a raw device
 
@@ -195,7 +192,7 @@ sub is_raw_device {
 
 =pod
 
-=item if( $minor->is_block_device ) { ... }
+=head2 if( $minor->is_block_device ) { ... }
 
 Returns true if the minor node is a block device
 
@@ -209,7 +206,7 @@ sub is_block_device {
 
 =pod
 
-=item $node = $minor->node;
+=head2 $node = $minor->node;
 
 Returns the associated Solaris::DevinfoTree node.
 One DevinfoTree node can (and usually does) have multiple minor nodes.
@@ -223,7 +220,7 @@ sub node {
 
 =pod
 
-=item $slice = $minor->slice;
+=head2 $slice = $minor->slice;
 
 Returns the slice number associated with this minor node.
 

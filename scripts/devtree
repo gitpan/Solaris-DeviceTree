@@ -29,7 +29,7 @@ my $slots;
 my %devtreeOptions = (
   attr		=> undef,
   prop		=> undef,
-  promProp	=> undef,
+  promprop	=> undef,
   minor		=> undef,
 );
 
@@ -40,9 +40,9 @@ GetOptions( 'help|?' => \$help, man => \$man,
   'p|print'	=> \$devtree,
   'w|attr:s'	=> \$devtreeOptions{attr},
   'o|prop:s'	=> \$devtreeOptions{prop},
-  'r|promProp:s' => \$devtreeOptions{promProp},
+  'r|promprop:s' => \$devtreeOptions{promprop},
   'm|minor'	=> \$devtreeOptions{minor},
-  'v|all'	=> sub { @devtreeOptions{ qw(attr prop promProp minor) } = ('', '', '', '') },
+  'v|all'	=> sub { @devtreeOptions{ qw(attr prop promprop minor) } = ('', '', '', '') },
 
   'a|aliases:s'	=> \$aliases,
   'd|disks'	=> \$disk,
@@ -148,7 +148,13 @@ sub printRecursive {
   }
 
   my $ctds = '';
-  $ctds .= 'c' . $node->controller if( defined $node->controller );
+  {
+    my $ctrl_node = $node;
+    while( defined $ctrl_node && !defined $node->controller ) {
+      $ctrl_node = $ctrl_node->parent_node;
+    }
+    $ctds .= 'c' . $node->controller if( defined $ctrl_node && defined $ctrl_node->controller );
+  }
   $ctds .= 't' . $node->target if( defined $node->target );
   $ctds .= 'd' . $node->lun if( defined $node->lun );
   print " [$ctds]" if( $ctds ne '' );
@@ -157,7 +163,7 @@ sub printRecursive {
   if( defined $options{attr} ) {
     print "  Node Name:       ", $node->node_name || '', "\n";
     print "  Binding Name:    ", $node->binding_name || '', "\n";
-    print "  Bus Address:     ", defined $node->bus_addr ? $node->bus_addr : "<unassigned>", "\n";
+    print "  Bus Address:     ", (defined $node->bus_addr ? $node->bus_addr : "<unassigned>"), "\n";
 
     my @cnames = $node->compatible_names;
     if( @cnames && scalar @cnames > 0 ) {
@@ -166,10 +172,10 @@ sub printRecursive {
       }
     }
     print "  Device ID:       ", $node->devid || '', "\n";
-    print "  Driver Name:     ", defined $node->driver_name ? $node->driver_name : "<unbound>", "\n";
+    print "  Driver Name:     ", (defined $node->driver_name ? $node->driver_name : "<unbound>"), "\n";
     my %ops = $node->driver_ops;
     print "  Driver Ops:      ", %ops ? join( " ", keys %ops ) : "<undefined>", "\n";
-    print "  Instance:        ", defined $node->instance ? $node->instance : "<unassigned>", "\n";
+    print "  Instance:        ", (defined $node->instance ? $node->instance : "<unassigned>"), "\n";
     print "  Node ID:         ", $node->nodeid || '', "\n";
   }
 
@@ -189,9 +195,9 @@ sub printRecursive {
     }
   }
 
-  if( defined $options{promProp} ) {
+  if( defined $options{promprop} ) {
     my $pprops = $node->prom_props;
-    my @listProps = (ref $options{promProp} ? @{$options{promProp}} : keys %$pprops);
+    my @listProps = (ref $options{promprop} ? @{$options{promprop}} : keys %$pprops);
     my $maxlen = maxlen( @listProps );
     # Print only if the node has properties at all *and* some of them should be printed
     print "  PROM-Properties:\n" if( keys %$pprops > 0 && @listProps > 0 );
@@ -239,8 +245,8 @@ sub print_tree {
     $options{prop} = [ split( /,/, $options{prop} ) ];
   }
 
-  if( defined $options{promProp} && $options{promProp} ne '' ) {
-    $options{promProp} = [ split( /,/, $options{promProp} ) ];
+  if( defined $options{promprop} && $options{promprop} ne '' ) {
+    $options{promprop} = [ split( /,/, $options{promprop} ) ];
   }
 
   printRecursive( $tree, %options );
@@ -329,8 +335,6 @@ sub print_bootinfo {
 
 }
 
-# -- Network --
-
 # -- disk --
 
 sub print_disk {
@@ -341,11 +345,20 @@ sub print_disk {
   # Criteria:
   # o has instance in the kernel
   # o has ctds
-#  foreach my $c ($tree->controller_nodes) {
-#  }
-    
-  foreach my $disk ($tree->block_nodes) {
-    print $disk->devfs_path, "\n";
+  foreach my $c (sort { $a->controller <=> $b->controller } $tree->controller_nodes) {
+    print "+-";
+    print "c", $c->controller if( defined $c->controller );
+    print " (", $c->devfs_path, ")\n";
+    foreach my $disk (sort { ($a->target || 0)*2 + ($a->lun || 0) <=>
+                             ($b->target || 0)*2 + ($b->lun || 0) }
+                      $c->block_nodes) {
+      next if( !defined $disk->target && !defined $disk->lun );
+      print "| +-";
+      print "c", $c->controller if( defined $c->controller );
+      print "t", $disk->target if( defined $disk->target );
+      print "d", $disk->lun if( defined $disk->lun );
+      print " (", $disk->devfs_path, ")\n";
+    }
   }
 }
 
@@ -364,6 +377,8 @@ sub print_tape {
 #  }
 }
 
+# -- Network --
+
 sub print_network {
 #  require Solaris::DeviceTree;
 #  my $tree = new Solaris::DeviceTree( use => [ qw( path_to_inst ) ], );
@@ -373,7 +388,7 @@ sub print_network {
   # -> TODO: Historical network nodes only in /etc/path_to_inst should be honored
 
   print "The following network devices have been found:\n";
-  foreach my $nn (sort { $a->driver_name . $a->instance <=> $b->driver_name . $b->instance }
+  foreach my $nn (sort { $a->driver_name . $a->instance cmp $b->driver_name . $b->instance }
                   $tree->network_nodes) {
     my $interface = $nn->driver_name . $nn->instance;
     print "+-", $interface, " (", $nn->devfs_path, ")\n";
@@ -395,7 +410,7 @@ sub getSpeed {
 
   my $freqstr = undef;
   if( exists $props->{'clock-frequency'} ) {
-    my $freq = iaToInt( $props->{'clock-frequency'} );
+    my $freq = iaToInt( unpack( "C*", ${$props->{'clock-frequency'}} ) );
     if( $freq < 1000 ) {
       $freqstr = sprintf( "%d Hz", $freq );
     } elsif( $freq >= 1000 && $freq <= 1000000 ) {
@@ -473,7 +488,7 @@ sub printLine {
     $reg = ( iaToInt( unpack( "CCCC", $props->{'reg'}) ) >> 11 ) & 0x1f;
   }
 
-  printf( "%-25s %-20s %10s %-8s %-16s %s\n",
+  printf( "%-25s %-21s %10s %-8s %-16s %s",
     $args{path} || '',
 #    ($args{driver} || '') . '-' . ($slot || '') . '-' . ($reg || '') . '-' . ($port || ''),
     $args{driver} || '',
@@ -482,6 +497,11 @@ sub printLine {
     $args{model} || '',
     ($position  || '') . (exists $state{DRIVER_DETACHED} ? ' (detached)' : ''),
   );
+
+  my $node = $args{node};
+  my $soldev = $node->solaris_device;
+  print " [$soldev]" if( defined $soldev && $soldev ne '' );
+  print "\n";
 }
 
 sub printUPANode {
@@ -645,7 +665,7 @@ devtree - Print information about the device tree in Solaris
        -v | --all
        -w= [--attr[=attr1,...]]
        -o= [--prop[=prop1,...]]
-       -r= [--promProp[=pprop1,...]]
+       -r= [--promprop[=pprop1,...]]
        -m= [--minor]
    -a [<alias>] | --aliases[=<alias>]
    -d | --disks
@@ -683,7 +703,7 @@ Prints properties for the device node. If property names are
 specified only those properties are printed or all properties if no
 property names are given.
 
-=item B<-r>, B<--promProp[=promProp1,...]>
+=item B<-r>, B<--promprop[=promprop1,...]>
 
 Prints prom properties for the device node. If property names are
 specified only those properties are printed or all properties if no
@@ -702,18 +722,18 @@ nvramrc?=false are not printed as they are not known to the OBP.
 For script usage it is possible to specify the value of a single alias
 whose value is output unformatted.
 
-=item B<-d>, B<--disks>
-
-=item B<-t>, B<--tapes>
-
-=item B<-n>, B<--network>
-
-Prints all network adapters, regardless if they are plumbed or not.
-
 =item B<-b>, B<--bootinfo>
 
 Print information related to booting from the OpenBoot-Prom.
 This includes the device last booted from and the boot- and diag-devices.
+
+=item B<-d>, B<--disks>
+
+Prints all disks in the system.
+
+=item B<-n>, B<--network>
+
+Prints all network adapters, regardless if they are plumbed or not.
 
 =back
 
@@ -721,8 +741,9 @@ This includes the device last booted from and the boot- and diag-devices.
 
 =over 4
 
-=item B<Finding properties of tape- and disk-devices>
+=item B<Print the complete devicetree>
 
+  devtree -pv
 
 =head1 AUTHOR
 

@@ -1,5 +1,5 @@
 #
-# $Header: /cvsroot/devicetool/Solaris-DeviceTree/lib/Solaris/DeviceTree.pm,v 1.4 2003/09/05 09:12:15 honkbude Exp $
+# $Header: /cvsroot/devicetool/Solaris-DeviceTree/lib/Solaris/DeviceTree.pm,v 1.9 2003/11/28 15:30:23 honkbude Exp $
 #
 
 package Solaris::DeviceTree;
@@ -16,7 +16,7 @@ use base qw( Exporter );
 use vars qw( $VERSION @EXPORT );
 
 @EXPORT = qw();
-$VERSION = '0.01';
+$VERSION = '0.02';
 our @ISA = qw( Solaris::DeviceTree::Node Solaris::DeviceTree::Util );
 
 use Carp;
@@ -25,11 +25,7 @@ use Solaris::DeviceTree::Node;
 use Solaris::DeviceTree::Util;
 use Solaris::DeviceTree::MinorNode;
 
-
 use Data::Dumper;
-
-
-
 
 =pod
 
@@ -52,21 +48,15 @@ the filesystem entries below C</dev> and C</devices>. The devicetree is
 presented as a hierarchical collection of node. Each node contains
 the unified information from all available resources.
 
-=head2 EXPORT
-
-=head2 PROPERTIES
-
-Each node of the devicetree has the following properties:
 
 =head2 METHODS
 
 The following methods are available:
 
-=over 4
+=head3 $devtree = Solaris::DeviceTree->new
 
-=item $devtree = Solaris::DeviceTree->new
-
-=item $devtree = Solaris::DeviceTree->new( use => [ qw( libdevinfo path_to_inst filesystem ) ] );
+=head3 $devtree = Solaris::DeviceTree->new(
+        use => [ qw( libdevinfo path_to_inst filesystem ) ] );
 
 The constructor returns a reference to a C<Solaris::DeviceTree> object which
 itself implements the C<Solaris::DeviceTree::Node> interface. The instance returned
@@ -104,7 +94,7 @@ sub new {
 
 =pod
 
-=item $devtree->DESTROY;
+=head3 $devtree->DESTROY;
 
 This methos removes all internal data structures which are associated
 with this object.
@@ -117,7 +107,7 @@ sub DESTROY {
 
 =pod
 
-=item @children = $devtree->child_nodes
+=head3 @children = $devtree->child_nodes
 
 This method returns a list with all children.
 
@@ -155,7 +145,7 @@ sub sources {
 
 =pod
 
-=item $node = $devtree->parent_node
+=head3 $node = $devtree->parent_node
 
 Returns the parent node for the object. If the object is toplevel,
 then C<undef> is returned.
@@ -166,7 +156,7 @@ then C<undef> is returned.
 
 =pod
 
-=item $node = $devtree->root_node
+=head3 $node = $devtree->root_node
 
 Returns the root node of the tree.
 
@@ -176,7 +166,7 @@ Returns the root node of the tree.
 
 =pod
 
-=item @siblings = $devtree->sibling_nodes
+=head3 @siblings = $devtree->sibling_nodes
 
 Returns the list of siblings for the object. A sibling is a child
 from our parent, but not ourselves.
@@ -187,7 +177,7 @@ from our parent, but not ourselves.
 
 =pod
 
-=item $path = $devtree->devfs_path
+=head3 $path = $devtree->devfs_path
 
 Returns the physical path assocatiated with this node.
 
@@ -198,7 +188,7 @@ Returns the physical path assocatiated with this node.
 
 BEGIN {
 
-for my $scalar_method (qw( devfs_path node_name binding_name bus_addr driver_name controller target lun slice )) {
+for my $scalar_method (qw( devfs_path node_name binding_name instance bus_addr driver_name controller target lun slice )) {
   eval qq{
     sub $scalar_method {
       my (\$this, \%params) = \@_;
@@ -301,25 +291,31 @@ sub prom_props {
 
 =pod
 
-=item $nodename = $devtree->node_name;
+=head3 $nodename = $devtree->node_name;
 
 Returns the name of the node.
 
 
-=item $bindingname = $devtree->binding_name;
+=head3 $bindingname = $devtree->binding_name;
 
 Returns the binding name for this node. The binding name
 is the name used by the system to select a driver for the device.
 
 
-=item $busadr = $devtree->bus_addr;
+=head3 $busadr = $devtree->bus_addr;
 
 Returns the address on the bus for this node. C<undef> is returned
 if a bus address has not been assigned to the device. A zero-length
 string may be returned and is considered a valid bus address.
 
 
-=item @compat_names = $devtree->compatible_names;
+=head3 $instance = $devtree->instance;
+
+Returns the instance number of the driver bound to the node. If no driver
+is bound to the node C<undef> is returned.
+
+
+=head3 @compat_names = $devtree->compatible_names;
 
 Returns the list of names from compatible device for the current node.
 See the discussion of generic names in L<Writing  Device Drivers> for
@@ -327,19 +323,19 @@ a description of how compatible names are used by Solaris to achieve
 driver binding for the node.
 
 
-=item $devid = $devtree->devid
+=head3 $devid = $devtree->devid
 
 Returns the device ID for the node, if it is registered. Otherwise, C<undef>
 is returned.
 
 
-=item $drivername = $devtree->driver_name;
+=head3 $drivername = $devtree->driver_name;
 
 Returns the name of the driver for the node or C<undef> if the node
 is not bound to any driver.
 
 
-=item @minor = @{$node->minor_nodes}
+=head3 @minor = @{$node->minor_nodes}
 
 Returns a list of all minor nodes which are associated with this node.
 The minor nodes are of class L<Solaris::DeviceTree::MinorNode>.
@@ -431,8 +427,21 @@ sub minor_nodes {
   return $this->{_minor_nodes};
 }
 
+=pod 
+
 =head1 EXAMPLES
 
+=head3 Print the device pathes contained in the C</etc/path_to_inst>
+
+  use Solaris::DeviceTree;
+
+  my $t = Solaris::DeviceTree->new( use => [ qw( path_to_inst ) ] );
+  my @nodes = ( $t );
+  while( @nodes > 0 ) {
+    my $node = shift @nodes;
+    print $node->devfs_path, "\n";
+    unshift @nodes, $node->child_nodes;
+  }
 
 =head1 AUTHOR
 
@@ -440,6 +449,9 @@ Copyright 1999-2003 Dagobert Michelsen.
 
 
 =head1 SEE ALSO
+
+L<Solaris::DeviceTree::PathToInst>, L<Solaris::DeviceTree::Filesystem>,
+L<Solaris::DeviceTree::Libdevinfo>.
 
 =head1 BUGS
 

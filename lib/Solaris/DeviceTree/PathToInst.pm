@@ -46,11 +46,9 @@ C<Solaris::DeviceTree> applicable to this context.
 
 The following methods are available:
 
-=over 4
+=head3 $node = new Solaris::DeviceTree::PathToInst;
 
-=item $node = new Solaris::DeviceTree::PathToInst;
-
-=item $node = new Solaris::DeviceTree::PathToInst( filename => '/a/etc/path_to_inst' );
+=head3 $node = new Solaris::DeviceTree::PathToInst( filename => '/a/etc/path_to_inst' );
 
 The constructor takes a location of a path_to_inst file as data source
 and returns a reference to the root node object. If no path_to_inst
@@ -171,7 +169,7 @@ sub root_node {
 
 =pod
 
-=item $path = $node->devfs_path
+=head3 $path = $node->devfs_path
 
 Returns the physical path assocatiated with this node.
 
@@ -186,7 +184,7 @@ sub devfs_path {
 
 =pod
 
-=item $nodename = $node->node_name;
+=head3 $nodename = $node->node_name;
 
 Returns the name of the node. The value is used to build the physical
 path. It is undefined for the root node and defined for all other nodes.
@@ -202,7 +200,7 @@ sub node_name {
 
 =pod
 
-=item $bindingname = $node->binding_name;
+=head3 $bindingname = $node->binding_name;
 
 Returns the binding name of the driver for the node.
 
@@ -215,7 +213,7 @@ sub binding_name {
 
 =pod
 
-=item $drivername = $node->driver_name;
+=head3 $drivername = $node->driver_name;
 
 Returns the driver name for the node.
 
@@ -228,7 +226,7 @@ sub driver_name {
 
 =pod
 
-=item $busaddr = $node->bus_addr;
+=head3 $busaddr = $node->bus_addr;
 
 Returns the address on the bus for this node. C<undef> is returned
 if a bus address has not been assigned to the device. A zero-length
@@ -243,7 +241,7 @@ sub bus_addr {
 
 =pod
 
-=item $inst = $node->instance;
+=head3 $inst = $node->instance;
 
 Returns the instance number for this node of the bound driver.
 C<undef> is returned if no instance number has been assigned.
@@ -263,8 +261,6 @@ sub instance {
 #sub nodeid { return undef; }
 
 =pod
-
-=back
 
 =head1 IMPLEMENTATION DETAILS
 
@@ -289,7 +285,7 @@ Copyright 1999-2003 Dagobert Michelsen.
 
 =head1 SEE ALSO
 
-  * L<path_to_inst (4)>
+C<path_to_inst(4)>
 
 =cut
 

@@ -32,11 +32,8 @@ Instances are generated only from L<Solaris::DeviceTree::Libdevinfo::minor_nodes
 
 The following methods are available:
 
-
-=over 4
-
-=item $minor = new
-  Solaris::DeviceTree::Libdevinfo::MinorNode($minor_data, $devinfo_node);
+=head3 $minor = new
+  Solaris::DeviceTree::Libdevinfo::MinorNode($minor_data, $devinfo_node)
 
 The constructor takes a SWIG-pointer to the C data structure
 of a minor node C<di_minor_t> and a backreference to the
@@ -58,7 +55,7 @@ sub new {
 
 =pod
 
-=item $name = $minor->name;
+=head3 $name = $minor->name
 
 Return the name of the minor node. This is used e.g. as suffix
 of the device filename. For disks this is something like ':a' or
@@ -73,7 +70,7 @@ sub name {
 
 =pod
 
-=item $path = $minor->devfs_path;
+=head3 $path = $minor->devfs_path
 
 Return the complete physical path including the minor node
 
@@ -86,7 +83,7 @@ sub devfs_path {
 
 =pod
 
-=item ($majnum,$minnum) = $minor->devt;
+=head3 ($majnum,$minnum) = $minor->devt
 
 Returns the major and minor device number as a pair for the node.
 The major numbers should be the same for all minor nodes return
@@ -103,7 +100,7 @@ sub devt {
 
 =pod
 
-=item $type = $minor->nodetype
+=head3 $type = $minor->nodetype
 
 Returns the nodetype of the minor node. Legal return values
 can be taken from <sys/sunddi.h>. With this call you
@@ -118,7 +115,7 @@ sub nodetype {
 
 =pod
 
-=item $spectype = $minor->spectype
+=head3 $spectype = $minor->spectype
 
 Returns the type of the minor node. Returns
   raw     for a raw device
@@ -141,7 +138,7 @@ sub spectype {
 
 =pod
 
-=item if( $minor->is_raw_device ) { ... }
+=head3 if( $minor->is_raw_device ) { ... }
 
 Returns true if the minor node is a raw device
 
@@ -154,7 +151,7 @@ sub is_raw_device {
 
 =pod
 
-=item if( $minor->is_block_device ) { ... }
+=head3 if( $minor->is_block_device ) { ... }
 
 Returns true if the minor node is a block device
 
@@ -167,7 +164,7 @@ sub is_block_device {
 
 =pod
 
-=item $node = $minor->node;
+=head3 $node = $minor->node
 
 Returns the associated Solaris::DevinfoTree node.
 One Solaris::DevinfoTree node can have multiple minor nodes.
@@ -191,7 +188,7 @@ Copyright 1999-2003 Dagobert Michelsen.
 
 =head1 SEE ALSO
 
-  L<Solaris::DeviceTree::Libdevinfo>
+L<Solaris::DeviceTree::Libdevinfo>
 
 =cut
 

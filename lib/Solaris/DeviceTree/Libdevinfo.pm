@@ -106,9 +106,7 @@ all child nodes.
 
 The following methods are available:
 
-=over 4
-
-=item $node = new Solaris::DeviceTree::Libdevinfo;
+=head3 $node = new Solaris::DeviceTree::Libdevinfo;
 
 The constructor returns a reference to the root node object, which is a
 C<Solaris::DeviceTree::Libdevinfo> object. Because the methods are
@@ -175,7 +173,7 @@ sub _prom_handle {
 
 #=pod
 #
-#=item $tree->DESTROY;
+#=head3 $tree->DESTROY;
 #
 #This is the destructor method. It should not be necessary to
 #call this method directly.
@@ -198,9 +196,9 @@ sub DESTROY {
 
 =pod
 
-=item @childs = $node->child_nodes;
+=head3 @childs = $node->child_nodes;
 
-=item @childs = $node->child_nodes( attr1 => val1, ... )
+=head3 @childs = $node->child_nodes( attr1 => val1, ... )
 
 This method returns a list with all children matching the given
 properties. If no properties are specified all children for the
@@ -234,7 +232,7 @@ sub child_nodes {
 
 =pod
 
-=item $parent = $node->parent_node;
+=head3 $parent = $node->parent_node;
 
 Returns the parent node for this node. If this is the root
 node, then C<undef> is returned.
@@ -252,7 +250,7 @@ sub parent_node {
 
 =pod
 
-=item $node = $node->root_node
+=head3 $node = $node->root_node
 
 Returns the root node of the tree.
 
@@ -268,7 +266,7 @@ sub root_node {
 
 =pod
 
-=item @siblings = $node->sibling_nodes
+=head3 @siblings = $node->sibling_nodes
 
 Returns the list of siblings for the object. A sibling is a child
 from our parent, but not ourselves.
@@ -291,7 +289,7 @@ sub sibling_nodes {
 
 =pod
 
-=item $path = $node->devfs_path
+=head3 $path = $node->devfs_path
 
 Returns the physical path assocatiated with this node.
 
@@ -304,7 +302,7 @@ sub devfs_path {
 
 =pod
 
-=item $nodename = $node->node_name;
+=head3 $nodename = $node->node_name;
 
 Returns the name of the node.
 
@@ -317,7 +315,7 @@ sub node_name {
 
 =pod
 
-=item $bindingname = $node->binding_name;
+=head3 $bindingname = $node->binding_name;
 
 Returns the binding name for this node. The binding name
 is the name used by the system to select a driver for the device.
@@ -331,7 +329,7 @@ sub binding_name {
 
 =pod
 
-=item $busaddr = $node->bus_addr;
+=head3 $busaddr = $node->bus_addr;
 
 Returns the address on the bus for this node. C<undef> is returned
 if a bus address has not been assigned to the device. A zero-length
@@ -347,7 +345,7 @@ sub bus_addr {
 
 =pod
 
-=item @compatNames = $devtree->compatible_names;
+=head3 @compatNames = $devtree->compatible_names;
 
 Returns the list of names from compatible device for the current node.
 See the discussion of generic names in L<Writing  Device Drivers> for
@@ -371,7 +369,7 @@ sub compatible_names {
 
 =pod
 
-=item $devid = $devtree->devid;
+=head3 $devid = $devtree->devid;
 
 Returns the device ID for the node, if it is registered. Otherwise, C<undef>
 is returned.
@@ -386,7 +384,7 @@ sub devid {
 
 =pod
 
-=item $drivername = $devtree->driver_name;
+=head3 $drivername = $devtree->driver_name;
 
 Returns the name of the driver for the node or C<undef> if the node
 is not bound to any driver.
@@ -400,7 +398,7 @@ sub driver_name {
 
 =pod
 
-=item %ops = $devtree->driver_ops;
+=head3 %ops = $devtree->driver_ops;
 
 Returns a hash whos keys indicate, which entry points of the
 device driver entry points are supported by the driver bound
@@ -426,7 +424,7 @@ sub driver_ops {
 
 =pod
 
-=item $inst = $node->instance;
+=head3 $inst = $node->instance;
 
 Returns the instance number for this node of the bound driver.
 C<undef> is returned if no instance number has been assigned.
@@ -443,7 +441,7 @@ sub instance {
 
 =pod
 
-=item %state = $node->state;
+=head3 %state = $node->state;
 
 Returns the driver state attached to this node as hash.
 The presence of the keys in the hash represent the states
@@ -474,7 +472,7 @@ sub state {
 
 =pod
 
-=item $id = $node->nodeid;
+=head3 $id = $node->nodeid;
 
 Returns the type of the node. Three different strings identifying
 the types can be returned or C<undef> if the type is unknown:
@@ -491,20 +489,20 @@ L<prom_props>.
 
 sub nodeid {
   my $this = shift;
-  my %_nodeId = (
+  my %_nodeid = (
     $DI_PSEUDO_NODEID => 'PSEUDO',
     $DI_SID_NODEID => 'SID',
     $DI_PROM_NODEID => 'PROM',
   );
 
   my $nodeid = di_nodeid( $this->{_data} );
-  my $result = ( exists $_nodeId{ $nodeid } ? $_nodeId{ $nodeid } : undef );
+  my $result = ( exists $_nodeid{ $nodeid } ? $_nodeid{ $nodeid } : undef );
   return $result;
 }
 
 =pod
 
-=item if( $node->is_pseudo_node ) { ... }
+=head3 if( $node->is_pseudo_node ) { ... }
 
 Returns the string C<PSEUDO> as true value if the node is a pseudo node or
 C<undef> if not.
@@ -518,7 +516,7 @@ sub is_pseudo_node {
 
 =pod
 
-=item if( $node->is_sid_node ) { ... }
+=head3 if( $node->is_sid_node ) { ... }
 
 Returns the string C<SID> as true value if the node is a sid node or
 C<undef> if not.
@@ -532,7 +530,7 @@ sub is_sid_node {
 
 =pod
 
-=item if( $node->is_prom_node ) { ... }
+=head3 if( $node->is_prom_node ) { ... }
 
 Returns the string C<PROM> as true value if the node is a prom node or
 C<undef> if not.
@@ -547,7 +545,7 @@ sub is_prom_node {
 
 =pod
 
-=item $props = $node->props;
+=head3 $props = $node->props;
 
 Returns a reference to a hash which maps property names to property values.
 The property values are of class L<Solaris::DeviceTree::Libdevinfo::Property>.
@@ -573,7 +571,7 @@ sub props {
 
 =pod
 
-=item $promprops = $node->prom_props;
+=head3 $promprops = $node->prom_props;
 
 Returns a reference to a hash which maps PROM property names to property values.
 The property values are of class L<Solaris::DeviceTree::Libdevinfo::PromProperty>.
@@ -607,7 +605,7 @@ sub prom_props {
 
 =pod
 
-=item @minor = $node->minor_nodes;
+=head3 @minor = $node->minor_nodes;
 
 Returns a reference to a list of all minor nodes which are associated with this node.
 The minor nodes are of class L<Solaris::DeviceTree::Libdevinfo::MinorNode>.

@@ -61,9 +61,7 @@ see the documentation of the base class L<Solaris::DeviceTree::Node>.
 The following methods returns values other than the defaults from
 the base class:
 
-=over 4
-
-=item $node = new Solaris::DeviceTree::Filesystem;
+=head3 $node = new Solaris::DeviceTree::Filesystem;
 
 This method contructs a new filesystem tree.
 
@@ -136,15 +134,35 @@ sub new {
   }
 
   foreach my $cfg (@cfg) {
+    next if( $cfg =~ /^usb\d+$/ );	# USB busses are not handled right now -> TODO
     my $devfs_path = readlink "/dev/cfg/" . $cfg;
+    if( !defined $devfs_path ) {
+      warn "The file '/dev/cfg/${cfg}' is not a link. Skipping it.";
+      next;
+    }
     my ($c) = ($cfg =~ /c(\d+)/);
+    if( !defined $c ) {
+      warn "File with peculiar name '${cfg}' found below /dev/cfg.\n" .
+        "The names should begin with 'c' and be followed by a number." .
+        "Skipping it.";
+      next;
+    }
+
+    my $ctrl_found = 0;
+
     $devfs_path =~ s!^\.\./\.\./devices!!;
-    my ($path, $minor) = ($devfs_path =~ /^([^:]+):(.*)$/);
-    my $node = $_ROOT_NODE->find_nodes( devfs_path => $path );
-    if( defined $node ) {
-      $node->controller( _controller => $c );
-    } else {
-      warn "The node for the device path '${path}' for the controller " . 
+    if( defined $devfs_path ) {
+      my ($path, $minor) = ($devfs_path =~ /^([^:]+):(.*)$/);
+      if( defined $path && defined $minor ) {
+        my $node = $_ROOT_NODE->find_nodes( devfs_path => $path );
+        if( defined $node ) {
+          $node->controller( _controller => $c );
+          $ctrl_found = 1;
+        }
+      }
+    }
+    if( !$ctrl_found ) {
+      warn "The node for the device path '${devfs_path}' for the controller " . 
         "'c${c}' could not be found";
     }
   }
@@ -217,7 +235,7 @@ sub child_nodes {
 
 =pod
 
-=item my $devfs_path = $node->devfs_path
+=head3 my $devfs_path = $node->devfs_path
 
 This method returns the physical path for this node.
 
@@ -232,7 +250,7 @@ sub devfs_path {
 
 =pod
 
-=item my $node_name = $node->node_name
+=head3 my $node_name = $node->node_name
 
 This method returns the name of the node. It is undefined for the root node
 and defined for all other nodes.
@@ -247,7 +265,7 @@ sub node_name {
 
 =pod
 
-=item my $bus_addr = $node->bus_addr
+=head3 my $bus_addr = $node->bus_addr
 
 This method return the bus address of the node. The bus address can be undefined.
 
@@ -261,7 +279,7 @@ sub bus_addr {
 
 =pod
 
-=item my @minor_nodes = @{$node->minor_nodes}
+=head3 my @minor_nodes = @{$node->minor_nodes}
 
 This method returns a reference to a list of all minor nodes associated
 with this node. For a detailed description for the return minor nodes
@@ -296,7 +314,7 @@ sub is_byte_device {
 
 =pod
 
-=item my $instance = $node->instance
+=head3 my $instance = $node->instance
 
 This method returns the instance number of the driver for this node.
 The instance number is calculated from the minor numbers of the
@@ -351,5 +369,22 @@ sub instance {
 
   return $this->{_instance};
 }
+
+=pod
+
+=head1 EXAMPLES
+
+
+=head1 AUTHOR
+
+Copyright 1999-2003 Dagobert Michelsen.
+
+
+=head1 SEE ALSO
+
+  L<Solaris::DeviceTree>
+
+=cut
+
 
 1;

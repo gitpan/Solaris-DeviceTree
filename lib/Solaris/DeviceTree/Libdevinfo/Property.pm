@@ -13,6 +13,7 @@ use Solaris::DeviceTree::Libdevinfo::Impl;
 Solaris::DeviceTree::Libdevinfo::Property - Property of a node of the Solaris devicetree
 
 =head1 SYNOPSIS
+
   use Solaris::DeviceTree::Libdevinfo;
   $tree = new Solaris::DeviceTree::Libdevinfo;
   @disks = $tree->find_nodes( type => 'disk' );
@@ -26,9 +27,7 @@ Solaris::DeviceTree::Libdevinfo::Property - Property of a node of the Solaris de
 
 The following methods are available:
 
-=over 4
-
-=item $minor = new Solaris::DeviceTree::Libdevinfo::Property($minor_data, $devinfo_node);
+=head3 $minor = new Solaris::DeviceTree::Libdevinfo::Property($minor_data, $devinfo_node);
 
 The constructor takes a SWIG-pointer to the C data structure
 of a minor node C<di_minor_t> and a backreference to the
@@ -48,10 +47,27 @@ sub new {
   return $this;
 }
 
+=pod
+
+=head3 my $name = $prop->name
+
+This method returns the name of the property.
+
+=cut
+
 sub name {
   my $this = shift @_;
   return di_prop_name( $this->{prop} );
 }
+
+=pod
+
+=head3 my ($major, $minor) = $prop->devt
+
+This method returns the devt-record of the property containing the major- and
+minor-number returned as list. If no devt-record is associated C<undef> is returned.
+
+=cut
 
 sub devt {
   my $this = shift @_;
@@ -65,14 +81,33 @@ sub devt {
   return @result;
 }
 
+=pod
+
+=head3 $type = $prop->type
+
+This method returns the type of the property. Depending on the type the data
+of the property must be handled accordingly. Valid return types are:
+
+  boolean int string byte unknown undefined
+
+=cut
+
 sub type {
   my $this = shift @_;
 
   my $prop = $this->{prop};
   my $type = di_prop_type( $prop );
-  my @types = qw( Boolean Int String Byte Unknown Undefined );
+  my @types = qw( boolean int string byte unknown undefined );
   return $types[ $type ];
 }
+
+=pod
+
+=head3 my @data = $prop->data
+
+This method returns the data associated with the property as list.
+
+=cut
 
 # -> TODO: let the user choose how to output the data: packed string,
 # plaintext, hex characters.
@@ -138,7 +173,7 @@ Copyright 1999-2003 Dagobert Michelsen.
 
 =head1 SEE ALSO
 
-  L<Solaris::DeviceTree::Libdevinfo>, L<libdevinfo>, L<di_prop_bytes>.
+L<Solaris::DeviceTree::Libdevinfo>, C<libdevinfo>, C<di_prop_bytes>.
 
 =cut
 

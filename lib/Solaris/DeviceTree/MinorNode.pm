@@ -37,14 +37,12 @@ C<Solaris::DeviceTree>. The data from all configured data sources
 containing minor nodes are unified through this class.
 This is an internal class to C<Solaris::DeviceTree>. There should be
 no need to generate instances of this class in an application explicitly.
-Instances are generated only from L<Solaris::DeviceTree::minor_nodes()>.
+Instances are generated only from C<Solaris::DeviceTree::minor_nodes()>.
 
 
 =head1 METHODS
 
 The following methods are available:
-
-=over 4
 
 =cut
 
@@ -64,7 +62,7 @@ sub new {
 
 =pod
 
-=item $name = $minor->name;
+=head3 $name = $minor->name;
 
 Return the name of the minor node. This is used e.g. as suffix
 of the device filename. For disks this is something like 'a' or
@@ -79,7 +77,7 @@ sub name {
 
 =pod
 
-=item $path = $minor->devfs_path;
+=head3 $path = $minor->devfs_path;
 
 Return the complete physical path including the minor node
 
@@ -92,7 +90,7 @@ sub devfs_path {
 
 =pod
 
-=item ($majnum,$minnum) = $minor->devt;
+=head3 ($majnum,$minnum) = $minor->devt;
 
 Returns the major and minor device number as a pair for the node.
 The major numbers should be the same for all minor nodes return
@@ -108,7 +106,7 @@ sub devt {
 
 =pod
 
-=item $type = $minor->nodetype
+=head3 $type = $minor->nodetype
 
 Returns the nodetype of the minor node. Because we can't
 find that out by looking at the filesystem we always return
@@ -123,7 +121,7 @@ sub nodetype {
 
 =pod
 
-=item $spectype = $minor->spectype
+=head3 $spectype = $minor->spectype
 
 Returns the type of the minor node. Returns
   $S_IFCHR     for a raw device
@@ -140,7 +138,7 @@ sub spectype {
 
 =pod
 
-=item if( $minor->is_raw_device ) { ... }
+=head3 if( $minor->is_raw_device ) { ... }
 
 Returns true if the minor node is a raw device
 
@@ -157,7 +155,7 @@ sub is_raw_device {
 
 =pod
 
-=item if( $minor->is_block_device ) { ... }
+=head3 if( $minor->is_block_device ) { ... }
 
 Returns true if the minor node is a block device
 
@@ -170,7 +168,7 @@ sub is_block_device {
 
 =pod
 
-=item $node = $minor->node;
+=head3 $node = $minor->node;
 
 Returns the associated C<Solaris::DeviceTree> node.
 One C<DeviceTree> node can (and usually does) have multiple minor nodes.
@@ -182,7 +180,7 @@ sub node {
   return $this->{_node};
 }
 
-=item $slice = $minor->slice;
+=head3 $slice = $minor->slice;
 
 Returns the slice number associated with this minor node if
 it represents a block device.

@@ -6,7 +6,7 @@ WHAT IS IT
 
 The "Solaris::DeviceTree" module implements access to the
 Solaris device information. The information is collected
-from the kernel via access to "libdevinfo", the contents of
+from the kernel via access to libdevinfo, the contents of
 the file "/etc/path_to_inst" and the filesystem entries
 below "/dev" and "/devices". The devicetree is presented as
 a hierarchical collection of nodes. Each node contains the
@@ -17,11 +17,34 @@ Just call 'devtree' without arguments or look at the
 manpage for details.
 
 Please note that the quality of the code is still experimental.
+
+
+CONTACT
+
+The project is hosted at sourceforge. Feel free to visit the
+project homepage at
+
+  http://devicetool.sourceforge.net
+
 Do not hesitate to contact me at
 
-  dam@baltic-online.de
+  pkg@baltic-online.de
 
 about flaws, the API or other improvements.
+
+
+OS SUPPORT
+
+This software needs at least Solaris 7 because the libdevinfo
+API was first defined in this release. Solaris 2.6 had a libdevinfo
+with a different API and can not be used.
+
+It might be a good idea to separate the libdevinfo code from the
+parts accessing path_to_inst and /devices so those packages could be
+used on earlier releases. However this has not been done yet.
+
+It should compile nicely under x86 although I had no chance
+to test it.
 
 
 INSTALLATION
@@ -37,16 +60,18 @@ This compiles the native interfaces and installs the library
 and the devtree binary. To rebuild the C files from the SWIG
 you can issue the command
 
-  bootstrap
+   bootstrap
 
 Of course you need SWIG for that. I used 1.3.19, older
 versions may not work due to some template improvements.
 
+For smooth installation on Solaris 9 systems you can build
+a Solaris package as add-on to the perl shipped with the os.
+Use
 
-DEPENDENCIES
+   makepkg solperlcc
 
-Nothing particular. As the module uses native libraries only
-available in Solaris I guess it depends on that...
+to build the package using the Sun C compiler (now called "Forte").
 
 
 IMPLEMENTATION NOTES

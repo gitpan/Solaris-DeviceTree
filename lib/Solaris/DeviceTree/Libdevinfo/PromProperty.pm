@@ -32,8 +32,6 @@ The constructor is considered internal and should not be used.
 
 The following methods are available:
 
-=over 4
-
 =cut
 
 # The constructor takes a packed binary scalar
@@ -49,7 +47,7 @@ sub new {
 
 =pod
 
-=item $promprop->string
+=head3 $promprop->string
 
 Returns the value of the property as human readable string where the value
 is returned as ASCII string or hex depending of the contents.
@@ -128,7 +126,6 @@ sub string {
 
 =pod
 
-
 =head1 AUTHOR
 
 Copyright 1999-2003 Dagobert Michelsen.
@@ -136,8 +133,8 @@ Copyright 1999-2003 Dagobert Michelsen.
 
 =head1 SEE ALSO
 
-L<Solaris::DeviceTree::Libdevinfo>, L<libdevinfo>, L<di_prom_prop_name>,
-L<di_prom_prop_data>, L<di_prom_prop_next>.
+L<Solaris::DeviceTree::Libdevinfo>, C<libdevinfo>, C<di_prom_prop_name>,
+C<di_prom_prop_data>, C<di_prom_prop_next>.
 
 =cut
 

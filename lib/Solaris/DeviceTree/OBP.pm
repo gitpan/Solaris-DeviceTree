@@ -35,8 +35,6 @@ OBP pathes according to L<IEEE 1275>.
 
 The following functions are exported on demand:
 
-=over 4
-
 =cut
 
 # SplitComponent - Split OBP path component into parts
@@ -80,7 +78,7 @@ sub _right_split {
 
 =pod
 
-=item $resolved_path = resolve_path( aliases => $aliases, path => "/path" );
+=head3 $p = resolve_path( aliases => $aliases, path => "/path" );
 
 This functions transforms the specified path in an alias-free
 path using the path resolution procedure described in
@@ -150,7 +148,7 @@ Dagobert Michelsen, E<lt>dam@baltic-online.deE<gt>
 
 =item OPEN FIRMWARE HOME PAGE
 
-http://playground.sun.com/1275/home.html
+  L<http://playground.sun.com/1275/home.html>
 
 =cut
 

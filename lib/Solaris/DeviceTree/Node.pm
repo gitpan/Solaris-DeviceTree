@@ -55,9 +55,7 @@ sub _new_node {
 
 The following methods are available:
 
-=over 4
-
-=item $parent = $node->parent_node;
+=head3 $parent = $node->parent_node;
 
 Returns the parent node for this node. If this is the root
 node, then C<undef> is returned.
@@ -71,7 +69,7 @@ sub parent_node {
 
 =pod
 
-=item @childs = $node->child_nodes;
+=head3 @childs = $node->child_nodes;
 
 This method returns a list with all children.
 
@@ -85,7 +83,7 @@ sub child_nodes {
 
 =pod
 
-=item $node = $node->root_node
+=head3 $node = $node->root_node
 
 Returns the root node of the tree.
 
@@ -103,7 +101,7 @@ sub root_node {
 
 =pod
 
-=item @siblings = $node->sibling_nodes
+=head3 @siblings = $node->sibling_nodes
 
 Returns the list of siblings for this object. A sibling is a child
 from our parent, but not ourselves.
@@ -126,7 +124,7 @@ sub sibling_nodes {
 
 =pod
 
-=item $path = $node->devfs_path
+=head3 $path = $node->devfs_path
 
 Returns the physical path assocatiated with this node.
 
@@ -136,7 +134,7 @@ sub devfs_path { return undef; }
 
 =pod
 
-=item $nodename = $node->node_name;
+=head3 $nodename = $node->node_name;
 
 Returns the name of the node used in the pysical path.
 
@@ -148,7 +146,7 @@ sub node_name { return undef; }
 
 =pod
 
-=item $bindingname = $node->binding_name;
+=head3 $bindingname = $node->binding_name;
 
 Returns the binding name of the driver for the node.
 
@@ -158,7 +156,7 @@ sub binding_name { return undef; }
 
 =pod
 
-=item $drivername = $node->driver_name;
+=head3 $drivername = $node->driver_name;
 
 Returns the driver name for the node.
 
@@ -168,7 +166,7 @@ sub driver_name { return undef; }
 
 =pod
 
-=item $busaddr = $node->bus_addr;
+=head3 $busaddr = $node->bus_addr;
 
 Returns the address on the bus for this node.
 
@@ -178,7 +176,7 @@ sub bus_addr { return undef; }
 
 =pod
 
-=item $inst = $node->instance;
+=head3 $inst = $node->instance;
 
 Returns the instance number of the bound driver for this node.
 C<undef> is returned if no instance number has been assigned.
@@ -245,7 +243,6 @@ sub rmt {
 }
 
 =pod
-
 
 =head1 AUTHOR
 

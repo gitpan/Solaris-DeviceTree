@@ -35,62 +35,7 @@ available to all subclasses of L<Solaris::DeviceTree>.
 
 The following methods are available:
 
-=over 4
-
-=cut
-
-# -> TODO: This should be integrated in find_nodes.
-sub __allNodesFlat {
-  my $this = shift;
-  if( !exists $this->{_allNodes} ) {
-    $this->{_allNodes} = [ $this, map { $_->allNodesFlat } $this->child_nodes ];
-  }
-  return @{$this->{_allNodes}};
-}
-
-# -> TODO: Is this still needed?
-# This method return all minor nodes from the whole subtree
-sub __allMinorNodes {
-  my $this = shift;
-
-  if( !exists $this->{_allMinorNodes} ) {
-    my @allMinorNodes = $this->minorNodes;
-    foreach my $child ($this->child_nodes) {
-      push @allMinorNodes, $child->allMinorNodes();
-    }
-    $this->{_allMinorNodes} = \@allMinorNodes;
-  }
-  return @{$this->{_allMinorNodes}};
-}
-
-
-# -> TODO: is this still needed?
-# This method returns all nodes which have minor nodes of type "disk".
-# Alternatively we could check for nodes with the prom-property "device_type"
-# "block" and look for bound driver instances. Additionally, a path-transfer
-# from obp-pathes to Solaris-pathes would be necessary.
-# However, both methods should be equivalent.
-sub __allBoundDiskNodes {
-  my $this = shift;
-
-  if( !exists $this->{_diskNodes} ) {
-    my @allDiskNodes =
-      map { $_->node() }
-      grep { defined $_->nodetype &&
-             $_->nodetype =~ /ddi_block.*channel/ &&
-             defined $_->spectype() &&
-             $_->spectype() eq "block" }
-      $this->allMinorNodes();
-    my %disks;
-    @disks{@allDiskNodes} = @allDiskNodes;
-    $this->{_diskNodes} = [ values %disks ];
-  }
-  return @{$this->{_diskNodes}};
-}
-
-=pod
-
-=item if( $node->is_network_node ) { ... }
+=head3 if( $node->is_network_node ) { ... }
 
 This method returns true if the node represents a network card.
 
@@ -125,14 +70,13 @@ sub is_network_node {
 
 =pod
 
-=item if( $node->is_block_node ) { ... }
+=head3 if( $node->is_block_node ) { ... }
 
 This method returns true if the node represents a block device
 (which is essentially a disk).
 
 =cut
 
-# -> TODO: Check for transfer nodes here!!
 sub is_block_node {
   my ($this) = @_;
 
@@ -143,14 +87,20 @@ sub is_block_node {
   if( defined $prom_prop ) {
     my $device_prop = $prom_prop->{device_type};
     if( defined $device_prop ) {
-      $is_block_node = $device_prop->string eq 'block';
+      # If we don't have a bus address or instance than it is a transfer node
+      # from the prom.
+      $is_block_node = ( ($device_prop->string eq 'block') &&
+                         (defined $this->bus_addr || defined $this->instance) );
     }
   }
 
+  # -> TODO: Check for PSEUDO nodes which are mapped through transfer nodes.
+  # Skip the next test for testing purposes
+
   if( !defined $is_block_node ) {
-    # Use driver names to check if it is a network component. However, this list
+    # Use driver names to check if it is a block driver. However, this list
     # might be updated, so return undef (=don't know) else.
-    my @known_block_drivers = ( qw( sd ssd ) );
+    my @known_block_drivers = ( qw( sd ssd dad ) );
     my %known; @known{@known_block_drivers} = (1 x scalar @known_block_drivers);
   
     my $driver_name = $this->driver_name;
@@ -162,7 +112,32 @@ sub is_block_node {
 
 =pod
 
-=item @network_nodes = $node->network_nodes
+=head3 if( $node->is_controller_node ) { ... }
+
+This method returns true if the node represents a controller device.
+
+=cut
+
+sub is_controller_node {
+  my ($this) = @_;
+
+  # when we already have an assigned controller number we definitely have a controller
+  if( defined $this->controller ) {
+    return 1;
+  }
+
+  # -> TODO: Do PROM property analytics and driver class checking for further detection
+
+  return undef;
+}
+
+
+sub is_tape_node {
+}
+
+=pod
+
+=head3 @network_nodes = $node->network_nodes
 
 This method returns all nodes for network cards in the tree.
 
@@ -177,7 +152,7 @@ sub network_nodes {
 
 =pod
 
-=item @block_nodes = $node->block_nodes
+=head3 @block_nodes = $node->block_nodes
 
 This method returns all nodes for disks in the tree.
 
@@ -190,12 +165,26 @@ sub block_nodes {
   return @nodes;
 }
 
+=pod
+
+=head3 @controller_nodes = $node->controller_nodes
+
+This method returns all nodes for controller devices.
+
+=cut
+
+sub controller_nodes {
+  my ($this) = @_;
+
+  my @nodes = $this->find_nodes( func => sub { $_->is_controller_node } );
+  return @nodes;
+}
 
 # -- Special search methods --
 
 =pod
 
-=item $node = $node->find_nodes( devfs_path => '/pci@1f,0/pci@1f,2000' );
+=head3 $node = $node->find_nodes( devfs_path => '/pci@1f,0/pci@1f,2000' );
 
 This method returns nodes matching certain criteria. Currently it is
 possible to match against a physical path or to specify a subroutine
@@ -210,7 +199,7 @@ In an array context the method returns all matching nodes.
 
 =cut
 
-# -> TODO> Wildcard matching
+# -> TODO: Wildcard matching
 
 sub find_nodes {
   my ($this, %options) = @_;
@@ -259,7 +248,7 @@ sub find_nodes {
 
 =pod
 
-=item my $prop = $node->find_prop( devfs_path => '/aliases', prop_name => 'disk' );
+=head3 my $prop = $node->find_prop( devfs_path => '/aliases', prop_name => 'disk' );
 
 This method picks a node by criteria from the devicetree and
 then selects either a property or a prom property depending on the
@@ -297,7 +286,7 @@ sub find_prop {
 
 =pod
 
-=item find_minor_node( name => ':a' );
+=head3 find_minor_node( name => ':a' );
 
 =cut
 
@@ -313,64 +302,9 @@ sub find_minor_node {
   }
 }
 
-# -> TODO: This should be transformed into a new method find_minor_node
-# This method returns the canonical minor node for the given parameters.
-# Valid parameters are:
-#   physicalPath	a physical path with minor node extension (e.g. .../sd@0,0:d)
-#   name		the name of a minor node bound to the current node
-#   <none>		the first lexicographic minor node for this node
-sub __minor {
-  my ($this, %options) = @_;
-
-  if( exists $options{physicalPath} ) {
-    my ($path, $minorName) = ($options{physicalPath} =~ /^([^:]*)(?::(.*))?$/);
-    my $node = $this->nodeByDevfsPath( $path );
-    return undef if( !defined $node );
-    my $minor;
-    if( defined $minorName ) {
-      $minor = $node->minor( name => $minorName );
-    } else {
-      $minor = $node->minor;
-    }
-    return $minor;
-  } elsif( exists $options{name} ) {
-    foreach my $minorNode ($this->minorNodes) {
-      return $minorNode if( $minorNode->name eq $options{name} );
-    }
-    return undef;
-  } else {
-    my $minor = (sort { $a->name cmp $b->name } $this->minorNodes)[ 0 ];
-    return $minor;
-  }
-}
-
-# -> TODO: Is this still needed?
-# This function checks, if there is a minor node defined for this node.
-# The following named parameters are valid:
-#   physicalPath
-sub __hasMinorNode {
-  my ($this, %options) = @_;
-
-  if( exists $options{physicalPath} ) {
-    # Search the node given by physical path
-    my ($path, $minorName) = ($options{physicalPath} =~ /^([^:]*)(?::(.*))?$/);
-    my $node = $this->nodeByDevfsPath( $path );
-    return 0 if( !defined $node || !defined $minorName );
-    return $node->hasMinorNode( name => $minorName );
-  }
-  if( exists $options{name} ) {
-    foreach my $minorNode ($this->minorNodes) {
-      return 1 if( $minorNode->name eq $options{name} );
-    }
-    return 0;
-  }
-  return 0;
-}
-
-
 =pod
 
-=item my $solaris_path = $node->solaris_path
+=head3 my $solaris_path = $node->solaris_path
 
 This method converts between an OBP device path and a Solaris device
 path.
@@ -471,36 +405,6 @@ sub __solarisPath {
   }
 }
 
-# This should be integrated in find_node
-sub __nodeByDevt {
-  my ($this, $major, $minor) = @_;
-
-  foreach my $minorNode ($this->allMinorNodes) {
-    my ($tmaj, $tmin) = $minorNode->devt;
-    if( $major == $tmaj && $minor == $tmin ) {
-      return $minorNode->node;
-    }
-  }
-  return undef;
-}
-
-# This should be completely obsolete with the overlay design
-sub __devtInstanceMap {
-  my ($this) = @_;
-
-  my $devtInstanceMap = Solaris::DeviceTree::Libdevinfo::DevtInstanceMap->new;
-  foreach my $minorNode ($this->allMinorNodes) {
-    my ($major, $minor) = $minorNode->devt;
-    $devtInstanceMap->insert( keys => [ qw( major minor instance ) ],
-      major => $major,
-      minor => $minor,
-      instance => $minorNode->node->driverInstance,
-    );
-  }
-  $devtInstanceMap;
-}
-  
-
 # -- Utility functions --
 # These methods transform information from the device node or tree
 # to special formats.
@@ -508,7 +412,7 @@ sub __devtInstanceMap {
 
 =pod
 
-=item %aliases = %{$node->aliases};
+=head3 %aliases = %{$node->aliases};
 
 This method returns a hash reference which maps all aliases to their
 corresponding pathes.
@@ -536,7 +440,7 @@ sub aliases {
 
 =pod
 
-=item $chosen_boot_device = $root->obp_chosen_boot_device;
+=head3 $chosen_boot_device = $root->obp_chosen_boot_device;
 
 This method returns the device from which the system has
 most recently booted.
@@ -550,7 +454,7 @@ sub obp_chosen_boot_device {
 
 =pod
 
-=item @boot_devices = $root->obp_boot_devices;
+=head3 @boot_devices = $root->obp_boot_devices;
 
 This method returns a list with all boot devices entered in the obp.
 
@@ -565,9 +469,9 @@ sub obp_boot_devices {
 
 =pod
 
-=item @diag_devices = $root->obp_diag_devices;
+=head3 @diag_devices = $root->obp_diag_devices;
 
-This methos returns a lst with all diag devices entered in the obp.
+This method returns a list with all diag devices entered in the obp.
 
 =cut
 
@@ -576,6 +480,45 @@ sub obp_diag_devices {
   my $prop = $this->find_prop( devfs_path => '/options', prom_prop_name => 'diag-device' );
   my @diag_devices = split /\s+/, $prop->string;
   return @diag_devices;
+}
+
+=pod
+
+=head3 my $name = $node->solaris_device
+
+This method returns the name of the associated Solaris device. This is for example
+
+  c0t0d0s0   for a disk device
+  hme0       for a network device
+  rmt0       for a tape device
+
+or C<undef> if no Solaris device could be found.
+
+=cut
+
+sub solaris_device {
+  my $this = shift;
+
+  my $solaris_device = undef;
+
+  if( $this->is_controller_node ) {
+    $solaris_device = 'c' . $this->controller if( defined $this->controller );
+  } elsif( $this->is_block_node ) {
+    $solaris_device = '';
+    my $ctrl_node = $this;
+    while( !defined $ctrl_node->controller && defined $ctrl_node->parent_node ) {
+      $ctrl_node = $ctrl_node->parent_node;
+    }
+    $solaris_device .= 'c' . $ctrl_node->controller if( defined $ctrl_node->controller );
+    $solaris_device .= 't' . $this->target if( defined $this->target );
+    $solaris_device .= 'd' . $this->lun if( defined $this->lun );
+  } elsif( $this->is_network_node ) {
+    $solaris_device = $this->driver_name . $this->instance;
+  } elsif( $this->is_tape_node ) {
+    $solaris_device = $this->driver_name . $this->instance;
+  }
+
+  $solaris_device;
 }
 
 =pod
