@@ -1,0 +1,28 @@
+TODO CURRENT VERSION
+====================
+
+* Solaris::DeviceTree::Node should have a constructor and should be used
+  as a base class for all devicetrees.
+
+* The methods in ::Util might better be moved to ::Node
+
+* Implement ::Util is_tape_node, tape_nodes
+
+* Enhance devtree with useful functionality
+  - Shellscript compatible output
+  - identify controllers for scsi, fc, ide
+    o controller numbers
+    o hardware pathes
+  - identify disks
+    o ctds
+    o hardware pathed
+    o compare current and historical information
+  - identify tapes
+    o compare current and historical information
+  - print bus mappings
+    o include networks, controllers, disks, tapes
+
+NEXT VERSION
+============
+
+* Generate instance numbers for filesystem minor nodes

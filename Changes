@@ -1,0 +1,6 @@
+Revision history for Perl extension Solaris::DeviceTree.
+
+0.01  Sat Apr  5 18:16:51 2003
+	- original version; created by h2xs 1.21 with options
+		-XA -n Solaris::DeviceTree
+
